@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: msa-api-gateway
+    ports:
+      - "8080:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+      - SERVICE_DISCOVERY_TYPE=static
+      - LOG_LEVEL=INFO
+    volumes:
+      - ../:/app
+    networks:
+      - msa-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis (서비스 디스커버리용)
+  redis:
+    image: redis:7-alpine
+    container_name: msa-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - msa-network
+    restart: unless-stopped
+
+  # Consul (서비스 디스커버리용)
+  consul:
+    image: consul:1.15
+    container_name: msa-consul
+    ports:
+      - "8500:8500"
+    volumes:
+      - consul_data:/consul/data
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+    networks:
+      - msa-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+  consul_data:
+    driver: local
+
+networks:
+  msa-network:
+    driver: bridge 

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile.railway"
+  },
+  "deploy": {
+    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/health/",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "HOST": "0.0.0.0",
+        "DEBUG": "false",
+        "SERVICE_DISCOVERY_TYPE": "static",
+        "LOG_LEVEL": "INFO",
+        "LOG_FORMAT": "json",
+        "SECRET_KEY": "railway-secret-key-change-in-production",
+        "ALGORITHM": "HS256",
+        "ACCESS_TOKEN_EXPIRE_MINUTES": "30",
+        "ENABLE_METRICS": "true",
+        "PROXY_TIMEOUT": "30",
+        "PROXY_MAX_RETRIES": "3",
+        "PROXY_RETRY_DELAY": "1.0"
+      }
+    }
+  }
+} 

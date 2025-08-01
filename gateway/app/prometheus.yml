@@ -1,0 +1,54 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway 메트릭 수집
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # 사용자 서비스 메트릭 수집
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:8001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # 주문 서비스 메트릭 수집
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:8002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # 상품 서비스 메트릭 수집
+  - job_name: 'product-service'
+    static_configs:
+      - targets: ['product-service:8003']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Consul 서비스 디스커버리
+  - job_name: 'consul'
+    static_configs:
+      - targets: ['consul:8500']
+    metrics_path: '/v1/agent/metrics'
+    scrape_interval: 30s
+
+  # Redis 메트릭 수집
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s 
