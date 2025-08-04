@@ -1,0 +1,117 @@
+name: greensteel
+
+services:
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./gateway:/app
+    env_file:
+      - ./gateway/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    depends_on:
+      - auth-service
+      - cbam-service
+      - chatbot-service
+      - report-service
+      - redis
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - app-network
+
+  auth-service:
+    build: ./service/auth-service
+    container_name: auth-service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./service/auth-service:/app
+    env_file:
+      - ./service/auth-service/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    networks:
+      - app-network
+
+  cbam-service:
+    build: ./service/cbam-service
+    container_name: cbam-service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./service/cbam-service:/app
+    env_file:
+      - ./service/cbam-service/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    networks:
+      - app-network
+
+  chatbot-service:
+    build: ./service/chatbot-service
+    container_name: chatbot-service
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./service/chatbot-service:/app
+    env_file:
+      - ./service/chatbot-service/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    networks:
+      - app-network
+
+  report-service:
+    build: ./service/report-service
+    container_name: report-service
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./service/report-service:/app
+    env_file:
+      - ./service/report-service/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    restart: always
+
+  n8n:
+    build:
+      context: ./n8n
+    container_name: n8n-container
+    ports:
+      - "5678:5678"
+    env_file:
+      - ./n8n/.env
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  n8n_data: 

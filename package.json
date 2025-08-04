@@ -1,0 +1,31 @@
+{
+  "name": "msa-project",
+  "version": "1.0.0",
+  "description": "Microservice Architecture Project",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "cd frontend && pnpm dev",
+    "dev:backend": "cd gateway && python -m uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:frontend": "cd frontend && pnpm build",
+    "start:frontend": "cd frontend && pnpm start",
+    "install:frontend": "cd frontend && pnpm install",
+    "install:all": "npm run install:frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "keywords": [
+    "microservices",
+    "fastapi",
+    "nextjs",
+    "typescript",
+    "docker"
+  ],
+  "author": "Yang Joonhyuck",
+  "license": "MIT"
+} 

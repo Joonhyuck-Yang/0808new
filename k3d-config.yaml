@@ -1,0 +1,25 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: msa-cluster
+servers: 1
+agents: 2
+kubeAPI:
+  host: "0.0.0.0"
+  hostPort: "6443"
+ports:
+  - port: "8080:30000"
+    nodeFilters:
+      - loadbalancer
+  - port: "3000:30001"
+    nodeFilters:
+      - loadbalancer
+options:
+  k3d:
+    wait: true
+    timeout: "60s"
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:* 

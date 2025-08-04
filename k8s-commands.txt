@@ -1,0 +1,44 @@
+# Kubernetes Commands for MSA Project
+
+## Cluster Management
+# Start local cluster (k3d)
+k3d cluster create msa-cluster
+
+# List clusters
+k3d cluster list
+
+# Delete cluster
+k3d cluster delete msa-cluster
+
+## Deployment
+# Apply all manifests
+kubectl apply -f k8s/
+
+# Apply specific service
+kubectl apply -f k8s/gateway-deployment.yaml
+
+# Check deployments
+kubectl get deployments
+
+# Check pods
+kubectl get pods
+
+# Check services
+kubectl get services
+
+## Logs and Debugging
+# View pod logs
+kubectl logs <pod-name>
+
+# Execute command in pod
+kubectl exec -it <pod-name> -- /bin/bash
+
+# Port forwarding
+kubectl port-forward <pod-name> 8080:8080
+
+## Cleanup
+# Delete all resources
+kubectl delete -f k8s/
+
+# Delete specific resource
+kubectl delete deployment <deployment-name> 

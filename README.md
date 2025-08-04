@@ -1,61 +1,81 @@
-# MSA API Gateway Project
+# MSA 프로젝트
 
-이 프로젝트는 마이크로서비스 아키텍처(MSA) 기반의 API Gateway와 관련 서비스들을 포함합니다.
+마이크로서비스 아키텍처 기반의 웹 애플리케이션입니다.
 
-## 🏗️ 프로젝트 구조
+## 🚀 로컬 개발 환경 실행
 
-```
-├── gateway/           # API Gateway 서비스
-│   ├── app/          # FastAPI 애플리케이션
-│   ├── Dockerfile    # Docker 설정
-│   └── requirements.txt
-├── service/          # 마이크로서비스들
-├── frontend/         # Next.js 프론트엔드
-└── document/         # 프로젝트 문서
+### 방법 1: 자동 실행 스크립트 사용 (권장)
+
+```powershell
+# 프로젝트 루트에서 실행
+.\start-local.ps1
 ```
 
-## 🚀 빠른 시작
+### 방법 2: 수동 실행
 
-### API Gateway 실행
-
+#### 1. 백엔드 실행
 ```bash
 cd gateway
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-### 프론트엔드 실행
-
+#### 2. 프론트엔드 실행 (새 터미널에서)
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-## 📚 API 문서
+## 📱 접속 주소
 
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
+- **프론트엔드**: http://localhost:3000
+- **백엔드 API**: http://localhost:8080
+- **Swagger 문서**: http://localhost:8080/docs
 
-## 🐳 Docker 배포
+## 🔧 환경 설정
+
+### 프론트엔드 환경 변수 설정
+
+`frontend/.env.local` 파일을 생성하고 다음 내용을 추가하세요:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_ENVIRONMENT=development
+```
+
+## 🛠️ 기술 스택
+
+### 백엔드
+- FastAPI
+- Python 3.8+
+- Uvicorn
+
+### 프론트엔드
+- Next.js 15
+- React 19
+- TypeScript
+- Material-UI
+- Tailwind CSS
+- pnpm
+
+## 📁 프로젝트 구조
+
+```
+├── frontend/          # Next.js 프론트엔드
+├── gateway/           # FastAPI 백엔드 (API Gateway)
+├── service/           # 마이크로서비스들
+├── docker-compose.yml # 백엔드 도커 설정
+└── start-local.ps1   # 로컬 실행 스크립트
+```
+
+## 🐳 도커 실행 (백엔드만)
 
 ```bash
-cd gateway
-docker build -t msa-gateway .
-docker run -p 8000:8000 msa-gateway
+docker-compose up backend
 ```
 
-## ☁️ Railway 배포
+## 📝 개발 노트
 
-자세한 배포 가이드는 [gateway/RAILWAY_DEPLOY.md](gateway/RAILWAY_DEPLOY.md)를 참조하세요.
-
-## 🔧 기술 스택
-
-- **Backend**: FastAPI, Python
-- **Frontend**: Next.js, TypeScript
-- **Deployment**: Railway, Docker
-- **Monitoring**: Prometheus, Grafana
-
-## 📝 라이선스
-
-MIT License 
+- 프론트엔드는 로컬에서 직접 실행 (pnpm dev)
+- 백엔드는 도커 또는 로컬에서 실행 가능
+- API 통신은 환경 변수 `NEXT_PUBLIC_API_URL`을 통해 설정 

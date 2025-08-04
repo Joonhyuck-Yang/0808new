@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 import uvicorn
 import structlog
 from typing import Dict, Any
+from pydantic import BaseModel
+from datetime import datetime
 
 from app.common.config import settings
 from app.common.logging import setup_logging
@@ -16,6 +18,13 @@ from app.domain.proxy_service import ProxyService
 # 로깅 설정
 setup_logging()
 logger = structlog.get_logger()
+
+
+# Pydantic 모델 정의
+class ChatMessage(BaseModel):
+    id: int
+    text: str
+    timestamp: str
 
 
 @asynccontextmanager
@@ -119,6 +128,48 @@ async def root():
         "version": "1.0.0",
         "status": "running"
     }
+
+
+@app.post("/api/chat", response_model=Dict[str, Any])
+async def receive_chat_message(message: ChatMessage):
+    """
+    프론트엔드에서 보내는 채팅 메시지를 받는 POST 엔드포인트
+    
+    Args:
+        message: ChatMessage 모델 (id, text, timestamp 포함)
+    
+    Returns:
+        Dict: 처리 결과와 받은 데이터
+    """
+    try:
+        logger.info(
+            "Received chat message",
+            message_id=message.id,
+            text=message.text,
+            timestamp=message.timestamp
+        )
+        
+        # 여기에 실제 메시지 처리 로직을 추가할 수 있습니다
+        # 예: 데이터베이스 저장, AI 처리, 다른 서비스로 전달 등
+        
+        return {
+            "status": "success",
+            "message": "메시지가 성공적으로 수신되었습니다",
+            "received_data": {
+                "id": message.id,
+                "text": message.text,
+                "timestamp": message.timestamp,
+                "processed_at": datetime.now().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(
+            "Error processing chat message",
+            error=str(e),
+            message_id=message.id
+        )
+        raise HTTPException(status_code=500, detail="메시지 처리 중 오류가 발생했습니다")
 
 
 if __name__ == "__main__":
