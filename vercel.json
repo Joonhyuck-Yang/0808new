@@ -11,10 +11,5 @@
       "src": "/(.*)",
       "dest": "/gateway/main.py"
     }
-  ],
-  "functions": {
-    "gateway/main.py": {
-      "runtime": "python3.11"
-    }
-  }
+  ]
 } 
