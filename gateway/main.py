@@ -7,48 +7,64 @@ import logging
 import sys
 import json
 from datetime import datetime
-from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
-# 로컬 환경변수 로드
-if os.getenv("RAILWAY_ENVIRONMENT") != "true":
-load_dotenv()
+# Vercel 환경 확인
+IS_VERCEL = os.getenv("VERCEL") == "1"
+
+# 로컬 환경변수 로드 (Vercel이 아닐 때만)
+if not IS_VERCEL:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
 
 logging.basicConfig(
     level=logging.INFO,
-format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-handlers=[logging.StreamHandler(sys.stdout)]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("gateway_api")
 
-# 회원가입 데이터를 저장할 파일 경로
-SIGNUP_DATA_FILE = "data/signup_data.json"
+# 회원가입 데이터를 저장할 파일 경로 (Vercel에서는 메모리 사용)
+SIGNUP_DATA_FILE = "data/signup_data.json" if not IS_VERCEL else None
+
+# 메모리 기반 데이터 저장 (Vercel용)
+_signup_data_memory = []
 
 # 회원가입 데이터를 파일에 저장하는 함수
 def save_signup_data(data):
     try:
-        # data 디렉토리가 없으면 생성
-        os.makedirs(os.path.dirname(SIGNUP_DATA_FILE), exist_ok=True)
-        
-        # 기존 데이터 읽기
-        existing_data = []
-        if os.path.exists(SIGNUP_DATA_FILE):
-            with open(SIGNUP_DATA_FILE, 'r', encoding='utf-8') as f:
-                existing_data = json.load(f)
-        
-        # 새 데이터 추가
-        new_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "data": data
-        }
-        existing_data.append(new_entry)
-        
-        # 파일에 저장
-        with open(SIGNUP_DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(existing_data, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"회원가입 데이터가 {SIGNUP_DATA_FILE}에 저장되었습니다.")
-        return True
+        if IS_VERCEL:
+            # Vercel에서는 메모리에 저장
+            new_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "data": data
+            }
+            _signup_data_memory.append(new_entry)
+            logger.info("회원가입 데이터가 메모리에 저장되었습니다.")
+            return True
+        else:
+            # 로컬에서는 파일에 저장
+            os.makedirs(os.path.dirname(SIGNUP_DATA_FILE), exist_ok=True)
+            
+            existing_data = []
+            if os.path.exists(SIGNUP_DATA_FILE):
+                with open(SIGNUP_DATA_FILE, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            
+            new_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "data": data
+            }
+            existing_data.append(new_entry)
+            
+            with open(SIGNUP_DATA_FILE, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"회원가입 데이터가 {SIGNUP_DATA_FILE}에 저장되었습니다.")
+            return True
     except Exception as e:
         logger.error(f"데이터 저장 실패: {str(e)}")
         return False
@@ -56,10 +72,15 @@ def save_signup_data(data):
 # 회원가입 데이터를 읽는 함수
 def load_signup_data():
     try:
-        if os.path.exists(SIGNUP_DATA_FILE):
-            with open(SIGNUP_DATA_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return []
+        if IS_VERCEL:
+            # Vercel에서는 메모리에서 읽기
+            return _signup_data_memory
+        else:
+            # 로컬에서는 파일에서 읽기
+            if os.path.exists(SIGNUP_DATA_FILE):
+                with open(SIGNUP_DATA_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return []
     except Exception as e:
         logger.error(f"데이터 읽기 실패: {str(e)}")
         return []
@@ -67,28 +88,30 @@ def load_signup_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Gateway API 서비스 시작")
-yield
+    yield
     logger.info("🛑 Gateway API 서비스 종료")
 
 app = FastAPI(
-title="Gateway API",
+    title="Gateway API",
     description="Gateway API for ausikor.com",
-version="0.1.0",
-docs_url="/docs",
-lifespan=lifespan
+    version="0.1.0",
+    docs_url="/docs",
+    lifespan=lifespan
 )
 
 # CORS 미들웨어 설정
 app.add_middleware(
-CORSMiddleware,
-allow_origins=[
-"http://localhost:3000",  # 로컬 접근
-"http://127.0.0.1:3000",  # 로컬 IP 접근
-"http://frontend:3000",   # Docker 내부 네트워크
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # 로컬 접근
+        "http://127.0.0.1:3000",  # 로컬 IP 접근
+        "http://frontend:3000",   # Docker 내부 네트워크
+        "https://*.vercel.app",   # Vercel 도메인
+        "https://jhyang.info",    # 커스텀 도메인
     ],
-allow_credentials=True,  # HttpOnly 쿠키 사용을 위해 필수
-allow_methods=["*"],
-allow_headers=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 메인 라우터 생성
