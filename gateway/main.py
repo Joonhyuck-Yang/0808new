@@ -1,11 +1,13 @@
-from typing import Optional, List
+from typing import Optional, List, AsyncGenerator
 from fastapi import APIRouter, FastAPI, Request, UploadFile, File, Query, HTTPException, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
 import os
 import logging
 import sys
 import json
+import httpx
+import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
 
@@ -16,16 +18,130 @@ IS_VERCEL = os.getenv("VERCEL") == "1"
 if not IS_VERCEL:
     try:
         from dotenv import load_dotenv
-        load_dotenv()
+load_dotenv()
     except ImportError:
         pass
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("gateway_api")
+
+# Auth Service URL 설정
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
+
+# 허용된 도메인 목록
+ALLOWED_DOMAINS = [
+    "jhyang.info",
+    "www.jhyang.info",
+    "localhost",
+    "127.0.0.1",
+    "frontend"
+]
+
+# 비동기 HTTP 클라이언트 (싱글톤 패턴)
+_http_client: Optional[httpx.AsyncClient] = None
+
+async def get_http_client() -> httpx.AsyncClient:
+    """비동기 HTTP 클라이언트 싱글톤 반환"""
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100)
+        )
+    return _http_client
+
+async def close_http_client():
+    """HTTP 클라이언트 정리"""
+    global _http_client
+    if _http_client:
+        await _http_client.aclose()
+        _http_client = None
+
+# Auth Service 연결 함수들 (비동기 스트림 지원)
+async def call_auth_service(endpoint: str, method: str = "GET", data: dict = None) -> dict:
+    """Auth Service 호출 함수 (동기 응답)"""
+    client = await get_http_client()
+    url = f"{AUTH_SERVICE_URL}{endpoint}"
+    
+    try:
+        if method.upper() == "GET":
+            response = await client.get(url)
+        elif method.upper() == "POST":
+            response = await client.post(url, json=data)
+        else:
+            raise HTTPException(status_code=400, detail=f"지원하지 않는 HTTP 메서드: {method}")
+        
+        response.raise_for_status()
+        return response.json()
+    except httpx.TimeoutException:
+        logger.error(f"⏰ Auth Service 타임아웃: {url}")
+        raise HTTPException(status_code=504, detail="Auth Service 응답 시간 초과")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"❌ Auth Service 오류: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Auth Service 오류: {e.response.text}")
+    except Exception as e:
+        logger.error(f"❌ Auth Service 연결 실패: {str(e)}")
+        raise HTTPException(status_code=503, detail="Auth Service 연결 실패")
+
+async def stream_auth_service(endpoint: str, method: str = "GET", data: dict = None) -> AsyncGenerator[str, None]:
+    """Auth Service 스트림 호출 함수 (비동기 스트림 응답)"""
+    client = await get_http_client()
+    url = f"{AUTH_SERVICE_URL}{endpoint}"
+    
+    try:
+        if method.upper() == "GET":
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_text():
+                    yield chunk
+        elif method.upper() == "POST":
+            async with client.stream("POST", url, json=data) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_text():
+                    yield chunk
+        else:
+            raise HTTPException(status_code=400, detail=f"지원하지 않는 HTTP 메서드: {method}")
+    except httpx.TimeoutException:
+        logger.error(f"⏰ Auth Service 스트림 타임아웃: {url}")
+        yield json.dumps({"error": "Auth Service 응답 시간 초과"})
+    except httpx.HTTPStatusError as e:
+        logger.error(f"❌ Auth Service 스트림 오류: {e.response.status_code}")
+        yield json.dumps({"error": f"Auth Service 오류: {e.response.status_code}"})
+    except Exception as e:
+        logger.error(f"❌ Auth Service 스트림 연결 실패: {str(e)}")
+        yield json.dumps({"error": "Auth Service 연결 실패"})
+
+async def call_auth_service_with_retry(endpoint: str, method: str = "GET", data: dict = None, max_retries: int = 3) -> dict:
+    """Auth Service 호출 함수 (재시도 로직 포함)"""
+    for attempt in range(max_retries):
+        try:
+            return await call_auth_service(endpoint, method, data)
+        except (httpx.TimeoutException, httpx.ConnectError) as e:
+            if attempt == max_retries - 1:
+                raise
+            logger.warning(f"🔄 Auth Service 재시도 {attempt + 1}/{max_retries}: {str(e)}")
+            await asyncio.sleep(1 * (attempt + 1))  # 지수 백오프
+    raise HTTPException(status_code=503, detail="Auth Service 연결 실패")
+
+# 도메인 검증 함수
+def is_allowed_domain(host: str) -> bool:
+    """허용된 도메인인지 확인"""
+    if not host:
+        return False
+    
+    # 포트 번호 제거
+    host = host.split(':')[0]
+    
+    # 허용된 도메인 목록 확인
+    for allowed_domain in ALLOWED_DOMAINS:
+        if host == allowed_domain or host.endswith(f".{allowed_domain}"):
+            return True
+    
+    return False
 
 # 회원가입 데이터를 저장할 파일 경로 (Vercel에서는 메모리 사용)
 SIGNUP_DATA_FILE = "data/signup_data.json" if not IS_VERCEL else None
@@ -88,31 +204,58 @@ def load_signup_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Gateway API 서비스 시작")
-    yield
+    # HTTP 클라이언트 초기화
+    await get_http_client()
+yield
+    # HTTP 클라이언트 정리
+    await close_http_client()
     logger.info("🛑 Gateway API 서비스 종료")
 
 app = FastAPI(
-    title="Gateway API",
+title="Gateway API",
     description="Gateway API for ausikor.com",
-    version="0.1.0",
-    docs_url="/docs",
-    lifespan=lifespan
+version="0.1.0",
+docs_url="/docs",
+lifespan=lifespan
 )
 
 # CORS 미들웨어 설정
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # 로컬 접근
-        "http://127.0.0.1:3000",  # 로컬 IP 접근
-        "http://frontend:3000",   # Docker 내부 네트워크
-        "https://*.vercel.app",   # Vercel 도메인
-        "https://jhyang.info",    # 커스텀 도메인
+CORSMiddleware,
+allow_origins=[
+        "https://jhyang.info",        # 커스텀 도메인
+        "https://www.jhyang.info",    # www 서브도메인
+        "http://jhyang.info",         # HTTP 커스텀 도메인 (개발용)
+        "http://www.jhyang.info",     # HTTP www 서브도메인 (개발용)
+        "http://localhost:3000",      # 로컬 개발용
+        "http://127.0.0.1:3000",      # 로컬 IP 개발용
+        "http://frontend:3000",       # Docker 내부 네트워크
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+allow_methods=["*"],
+allow_headers=["*"],
 )
+
+# 도메인 검증 미들웨어 추가
+@app.middleware("http")
+async def domain_validation_middleware(request: Request, call_next):
+    """도메인 검증 미들웨어"""
+    host = request.headers.get("host", "")
+    
+    # 헬스체크는 모든 도메인에서 허용
+    if request.url.path == "/api/v1/health":
+        return await call_next(request)
+    
+    # 허용된 도메인인지 확인
+    if not is_allowed_domain(host):
+        logger.warning(f"🚫 허용되지 않은 도메인 접근: {host}")
+        return JSONResponse(
+            status_code=403,
+            content={"error": "Access denied", "message": "허용되지 않은 도메인입니다."}
+        )
+    
+    logger.info(f"✅ 허용된 도메인 접근: {host}")
+    return await call_next(request)
 
 # 메인 라우터 생성
 gateway_router = APIRouter(prefix="/api/v1", tags=["Gateway API"])
@@ -244,17 +387,29 @@ async def login(request: Request):
         id = body.get("id")
         password = body.get("password")
         
-        # 검증 없이 무조건 성공
+        logger.info(f"🔐 Gateway에서 로그인 요청: {id}")
+        
+        # Auth Service 호출
+        auth_response = await call_auth_service("/auth/login", "POST", {
+            "id": id,
+            "password": password
+        })
+        
+        logger.info(f"✅ Auth Service 로그인 성공: {auth_response}")
+        
         return {
             "status": "success",
             "message": "로그인 성공",
-            "access_token": "dummy_token_12345",
+            "access_token": auth_response.get("token", "dummy_token_12345"),
             "user": {
-                "id": id,
+                "id": auth_response.get("user_id", id),
                 "name": "사용자"
             }
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"❌ 로그인 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"로그인 실패: {str(e)}")
 
 # API v1 로그인 엔드포인트 (기존 경로 유지)
@@ -265,21 +420,33 @@ async def login_api_v1(request: Request):
         id = body.get("id")
         password = body.get("password")
         
-        # 간단한 검증 (실제로는 데이터베이스에서 확인해야 함)
-        if id and password:
-            # 성공 응답
-            return {
-                "status": "success",
-                "message": "로그인 성공",
-                "access_token": "dummy_token_12345",
-                "user": {
-                    "id": id,
-                    "name": "사용자"
-                }
-            }
-        else:
+        logger.info(f"🔐 Gateway API v1에서 로그인 요청: {id}")
+        
+        # 간단한 검증
+        if not id or not password:
             raise HTTPException(status_code=400, detail="ID와 비밀번호를 입력해주세요")
+        
+        # Auth Service 호출 (재시도 로직 포함)
+        auth_response = await call_auth_service_with_retry("/auth/login", "POST", {
+            "id": id,
+            "password": password
+        })
+        
+        logger.info(f"✅ Auth Service 로그인 성공: {auth_response}")
+        
+        return {
+            "status": "success",
+            "message": "로그인 성공",
+            "access_token": auth_response.get("token", "dummy_token_12345"),
+            "user": {
+                "id": auth_response.get("user_id", id),
+                "name": "사용자"
+            }
+        }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"❌ 로그인 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"로그인 실패: {str(e)}")
 
 # 회원가입 엔드포인트
@@ -772,6 +939,86 @@ async def dashboard_page():
     """
     return HTMLResponse(content=html_content)
 
+# 스트림 처리를 위한 엔드포인트들
+@gateway_router.get("/auth/stream", summary="Auth Service 스트림 연결")
+async def auth_stream():
+    """Auth Service와의 스트림 연결"""
+    logger.info("🌊 Auth Service 스트림 연결 시작")
+    
+    async def generate_stream():
+        try:
+            async for chunk in stream_auth_service("/auth/health"):
+                yield f"data: {chunk}\n\n"
+        except Exception as e:
+            error_msg = json.dumps({"error": str(e)})
+            yield f"data: {error_msg}\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
+
+@gateway_router.post("/auth/stream/login", summary="Auth Service 로그인 스트림")
+async def auth_login_stream(request: Request):
+    """Auth Service 로그인 스트림 처리"""
+    try:
+        body = await request.json()
+        logger.info(f"🌊 Auth Service 로그인 스트림 시작: {body.get('id', 'unknown')}")
+        
+        async def generate_login_stream():
+            try:
+                async for chunk in stream_auth_service("/auth/login", "POST", body):
+                    yield f"data: {chunk}\n\n"
+            except Exception as e:
+                error_msg = json.dumps({"error": str(e)})
+                yield f"data: {error_msg}\n\n"
+        
+        return StreamingResponse(
+            generate_login_stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream",
+            }
+        )
+    except Exception as e:
+        logger.error(f"❌ 로그인 스트림 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"로그인 스트림 실패: {str(e)}")
+
+@gateway_router.post("/auth/stream/signup", summary="Auth Service 회원가입 스트림")
+async def auth_signup_stream(request: Request):
+    """Auth Service 회원가입 스트림 처리"""
+    try:
+        body = await request.json()
+        logger.info(f"🌊 Auth Service 회원가입 스트림 시작: {body.get('name', 'unknown')}")
+        
+        async def generate_signup_stream():
+            try:
+                async for chunk in stream_auth_service("/auth/signup", "POST", body):
+                    yield f"data: {chunk}\n\n"
+            except Exception as e:
+                error_msg = json.dumps({"error": str(e)})
+                yield f"data: {error_msg}\n\n"
+        
+        return StreamingResponse(
+            generate_signup_stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream",
+            }
+        )
+    except Exception as e:
+        logger.error(f"❌ 회원가입 스트림 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"회원가입 스트림 실패: {str(e)}")
+
 # 라우터를 앱에 포함
 app.include_router(gateway_router)
 
@@ -783,4 +1030,8 @@ def handler(request, context):
 # 로컬 개발용 (Vercel에서는 사용되지 않음)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    import os
+    
+    # Railway 환경변수에서 PORT 가져오기, 없으면 8080 사용
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
