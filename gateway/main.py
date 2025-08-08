@@ -752,6 +752,12 @@ async def dashboard_page():
 # 라우터를 앱에 포함
 app.include_router(gateway_router)
 
+# Vercel 서버리스 환경을 위한 핸들러 (Vercel에서만 사용)
+def handler(request, context):
+    """Vercel 서버리스 함수 핸들러"""
+    return app(request, context)
+
+# 로컬 개발용 (Vercel에서는 사용되지 않음)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)

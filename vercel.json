@@ -2,8 +2,19 @@
   "version": 2,
   "builds": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/next"
+      "src": "gateway/main.py",
+      "use": "@vercel/python"
     }
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/gateway/main.py"
+    }
+  ],
+  "functions": {
+    "gateway/main.py": {
+      "runtime": "python3.11"
+    }
+  }
 } 
