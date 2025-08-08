@@ -1,22 +1,21 @@
 version: '3.8'
 
 services:
-  # 게이트웨이 서비스
   gateway:
-    build: ./gateway
+    build: .
     ports:
       - "8080:8080"
     environment:
       - RAILWAY_ENVIRONMENT=false
     volumes:
-      - ./gateway:/app
+      - .:/app
       - signup_data:/app/data
     networks:
-      - app-network
+      - gateway-network
 
 volumes:
   signup_data:
 
 networks:
-  app-network:
-    driver: bridge 
+  gateway-network:
+    driver: bridge

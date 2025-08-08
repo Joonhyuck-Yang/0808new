@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  // 도커 환경에서 호스트 바인딩
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://gateway:8080/api/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

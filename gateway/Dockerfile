@@ -14,14 +14,11 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 추가로 필요한 패키지 설치
-RUN pip install fastapi uvicorn pydantic structlog
-
 # 소스 코드 복사
 COPY . .
 
 # 포트 노출
 EXPOSE 8080
 
-# FastAPI 서버 실행
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+# FastAPI 서버 실행 (main.py 직접 실행)
+CMD ["python", "main.py"]
