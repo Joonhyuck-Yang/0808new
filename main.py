@@ -50,7 +50,7 @@ else:
 logger = logging.getLogger("gateway_api")
 
 # Auth Service URL 설정
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "https://auth-service-production-aabc.up.railway.app")
 
 # 허용된 도메인 목록
 ALLOWED_DOMAINS = [

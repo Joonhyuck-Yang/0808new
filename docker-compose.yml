@@ -9,7 +9,7 @@ services:
       - "${PORT:-8000}:8000"
     environment:
       - PORT=8000
-      - AUTH_SERVICE_URL=http://auth-service:8000
+      - AUTH_SERVICE_URL=https://auth-service-production-aabc.up.railway.app
       - RAILWAY_ENVIRONMENT=true
       - LOG_LEVEL=INFO
     depends_on:

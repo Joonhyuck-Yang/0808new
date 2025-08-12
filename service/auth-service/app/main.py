@@ -21,6 +21,7 @@ if IS_RAILWAY:
         handlers=[logging.StreamHandler(sys.stdout)]
     )
     print("🚂 Auth Service - Railway 환경에서 실행 중")
+    print("📝 회원가입 요청을 받아서 Railway 로그에 출력합니다")
 else:
     logging.basicConfig(level=logging.INFO)
     print("🏠 Auth Service - 로컬 환경에서 실행 중")
@@ -52,17 +53,61 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """헬스 체크"""
-    return {"status": "healthy", "service": "auth-service"}
+    health_data = {
+        "status": "healthy", 
+        "service": "auth-service",
+        "timestamp": datetime.now().isoformat(),
+        "environment": "railway" if IS_RAILWAY else "local"
+    }
+    
+    # Railway 로그에 헬스체크 정보 출력
+    if IS_RAILWAY:
+        print(f"🚂 AUTH SERVICE HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
+        logger.info(f"AUTH_SERVICE_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
+    
+    return health_data
 
 @app.post("/signup")
 async def signup(request: Request):
     """회원가입 처리 - name과 pass만 저장"""
     try:
+        # 요청 시작 로그
+        start_time = datetime.now()
+        print(f"🚂 AUTH SERVICE SIGNUP START: {start_time.isoformat()}")
+        logger.info(f"AUTH_SERVICE_SIGNUP_START: {start_time.isoformat()}")
+        
         body = await request.json()
         
         # name과 pass만 추출
         user_name = body.get("name", "")
         user_pass = body.get("pass", "")
+        
+        # 입력 데이터 검증 로그
+        validation_log = {
+            "event": "signup_validation",
+            "timestamp": datetime.now().isoformat(),
+            "input_data": {
+                "name": user_name,
+                "pass": user_pass
+            },
+            "validation": {
+                "name_length": len(user_name),
+                "pass_length": len(user_pass),
+                "name_empty": not user_name,
+                "pass_empty": not user_pass
+            },
+            "source": "auth_service",
+            "environment": "railway"
+        }
+        print(f"🚂 AUTH SERVICE VALIDATION LOG: {json.dumps(validation_log, indent=2, ensure_ascii=False)}")
+        logger.info(f"AUTH_SERVICE_VALIDATION_LOG: {json.dumps(validation_log, ensure_ascii=False)}")
+        
+        # 입력 검증
+        if not user_name or not user_pass:
+            error_msg = "아이디와 비밀번호를 모두 입력해주세요"
+            print(f"❌ AUTH SERVICE VALIDATION ERROR: {error_msg}")
+            logger.error(f"AUTH_SERVICE_VALIDATION_ERROR: {error_msg}")
+            raise HTTPException(status_code=400, detail=error_msg)
         
         # Railway 로그에 JSON 형태로 출력 (name과 pass만)
         railway_log_data = {
@@ -73,7 +118,8 @@ async def signup(request: Request):
                 "pass": user_pass
             },
             "source": "auth_service",
-            "environment": "railway"
+            "environment": "railway",
+            "request_id": f"signup_{start_time.strftime('%Y%m%d_%H%M%S')}"
         }
         
         # Railway 로그에 출력 (중요!)
@@ -89,7 +135,8 @@ async def signup(request: Request):
                 "pass": user_pass
             },
             "railway_logged": True,
-            "service": "auth-service"
+            "service": "auth-service",
+            "request_id": railway_log_data["request_id"]
         }
         
         # Railway 로그에 최종 결과도 출력
@@ -98,7 +145,8 @@ async def signup(request: Request):
             "timestamp": datetime.now().isoformat(),
             "result": response_data,
             "railway_status": "success",
-            "service": "auth-service"
+            "service": "auth-service",
+            "processing_time_ms": (datetime.now() - start_time).total_seconds() * 1000
         }
         print(f"🚂 AUTH SERVICE FINAL LOG: {json.dumps(final_log, indent=2, ensure_ascii=False)}")
         logger.info(f"AUTH_SERVICE_FINAL_LOG: {json.dumps(final_log, ensure_ascii=False)}")
@@ -116,7 +164,8 @@ async def signup(request: Request):
             "timestamp": datetime.now().isoformat(),
             "error": str(e),
             "railway_status": "error",
-            "service": "auth-service"
+            "service": "auth-service",
+            "request_id": f"error_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         }
         print(f"🚂 AUTH SERVICE ERROR LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
         logger.error(f"AUTH_SERVICE_ERROR_LOG: {json.dumps(error_log, ensure_ascii=False)}")
@@ -127,12 +176,38 @@ async def signup(request: Request):
 async def login(request: Request):
     """로그인 처리"""
     try:
+        start_time = datetime.now()
+        print(f"🚂 AUTH SERVICE LOGIN START: {start_time.isoformat()}")
+        logger.info(f"AUTH_SERVICE_LOGIN_START: {start_time.isoformat()}")
+        
         body = await request.json()
         user_name = body.get("name", "")
         user_pass = body.get("pass", "")
         
+        # 로그인 시도 로그
+        login_attempt_log = {
+            "event": "login_attempt",
+            "timestamp": datetime.now().isoformat(),
+            "user_name": user_name,
+            "source": "auth_service",
+            "environment": "railway"
+        }
+        print(f"🚂 AUTH SERVICE LOGIN ATTEMPT: {json.dumps(login_attempt_log, indent=2, ensure_ascii=False)}")
+        logger.info(f"AUTH_SERVICE_LOGIN_ATTEMPT: {json.dumps(login_attempt_log, ensure_ascii=False)}")
+        
         # 간단한 로그인 검증 (실제로는 데이터베이스 확인 필요)
         if user_name and user_pass:
+            success_log = {
+                "event": "login_success",
+                "timestamp": datetime.now().isoformat(),
+                "user_name": user_name,
+                "source": "auth_service",
+                "environment": "railway",
+                "processing_time_ms": (datetime.now() - start_time).total_seconds() * 1000
+            }
+            print(f"🚂 AUTH SERVICE LOGIN SUCCESS: {json.dumps(success_log, indent=2, ensure_ascii=False)}")
+            logger.info(f"AUTH_SERVICE_LOGIN_SUCCESS: {json.dumps(success_log, ensure_ascii=False)}")
+            
             return {
                 "status": "success",
                 "message": "로그인 성공!",
@@ -140,15 +215,41 @@ async def login(request: Request):
                 "service": "auth-service"
             }
         else:
-            raise HTTPException(status_code=400, detail="아이디와 비밀번호를 입력해주세요")
+            error_msg = "아이디와 비밀번호를 입력해주세요"
+            print(f"❌ AUTH SERVICE LOGIN ERROR: {error_msg}")
+            logger.error(f"AUTH_SERVICE_LOGIN_ERROR: {error_msg}")
+            raise HTTPException(status_code=400, detail=error_msg)
             
     except Exception as e:
         logger.error(f"로그인 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"로그인 실패: {str(e)}")
+
+@app.get("/status")
+async def service_status():
+    """서비스 상태 확인"""
+    status_data = {
+        "service": "auth-service",
+        "status": "running",
+        "timestamp": datetime.now().isoformat(),
+        "environment": "railway" if IS_RAILWAY else "local",
+        "endpoints": [
+            "/health",
+            "/signup",
+            "/login",
+            "/status"
+        ]
+    }
+    
+    if IS_RAILWAY:
+        print(f"🚂 AUTH SERVICE STATUS: {json.dumps(status_data, indent=2, ensure_ascii=False)}")
+        logger.info(f"AUTH_SERVICE_STATUS: {json.dumps(status_data, ensure_ascii=False)}")
+    
+    return status_data
 
 if __name__ == "__main__":
     import uvicorn
     
     # Railway 환경변수에서 PORT 가져오기, 없으면 8000 사용
     port = int(os.getenv("PORT", "8000"))
+    print(f"🚂 Auth Service 시작 - 포트: {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
