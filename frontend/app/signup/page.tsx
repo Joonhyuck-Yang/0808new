@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import axios from 'axios';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -19,28 +20,40 @@ export default function SignupPage() {
       console.log('🚀 회원가입 데이터 전송 시작...');
       console.log('📦 전송할 데이터:', formData);
       
-      const response = await fetch('https://gateway-production-be21.up.railway.app/api/v1/signup', {
-        method: 'POST',
+      const response = await axios.post('https://gateway-production-be21.up.railway.app/api/v1/signup', formData, {
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+        }
       });
 
-      const result = await response.json();
+      const result = response.data;
       console.log('✅ 회원가입 성공:', result);
       
-      if (response.ok) {
+      if (response.status === 200 || response.status === 201) {
         setResult(result);
         // 폼 초기화
         setFormData({ name: '', pass: '' });
         alert('회원가입 성공!\\n\\n아이디: ' + formData.name + '\\n비밀번호: ' + formData.pass + '\\n\\nRailway 로그를 확인하세요!');
       } else {
-        throw new Error(result.detail || '회원가입 실패');
+        throw new Error(result.detail || result.message || '회원가입 실패');
       }
     } catch (error: any) {
       console.error('❌ 회원가입 실패:', error);
-      alert('회원가입 실패: ' + error.message);
+      
+      // axios 에러 처리
+      let errorMessage = '회원가입 실패';
+      if (error.response) {
+        // 서버 응답이 있는 경우
+        errorMessage = error.response.data?.detail || error.response.data?.message || `서버 오류: ${error.response.status}`;
+      } else if (error.request) {
+        // 요청은 보냈지만 응답이 없는 경우
+        errorMessage = '서버에 연결할 수 없습니다';
+      } else {
+        // 기타 오류
+        errorMessage = error.message || '알 수 없는 오류가 발생했습니다';
+      }
+      
+      alert('회원가입 실패: ' + errorMessage);
     } finally {
       setIsLoading(false);
     }
