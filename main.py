@@ -217,7 +217,7 @@ async def health_check():
     return {"status": "healthy!", "message": "Gateway API is running"}
 
 # 회원가입 데이터를 받는 엔드포인트 (name과 pass만 저장)
-@gateway_router.post("/signup", summary="회원가입")
+@gateway_router.post("/api/v1/signup", summary="회원가입")
 async def signup(request: Request):
     """회원가입 처리 - 아이디는 name, 비밀번호는 pass만 저장"""
     try:
@@ -262,7 +262,7 @@ async def signup(request: Request):
             "railway_status": "success"
         }
         print(f"🚂 RAILWAY FINAL LOG: {json.dumps(final_log, indent=2, ensure_ascii=False)}")
-        logger.info(f"RAILWAY_FINAL_LOG: {json.dumps(final_log, ensure_ascii=False)}")
+        logger.info(f"RAILWAY_FINAL_LOG: {json.dumps(final_log, indent=2, ensure_ascii=False)}")
         
         return response_data
         
