@@ -28,11 +28,15 @@ services:
       context: ./service/auth-service
       dockerfile: Dockerfile
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
       - PORT=8000
       - RAILWAY_ENVIRONMENT=true
       - LOG_LEVEL=INFO
+      - GATEWAY_URL=https://gateway-production-be21.up.railway.app
+      - HTTP_TIMEOUT=30
+      - HTTP_MAX_CONNECTIONS=100
+      - HTTP_MAX_KEEPALIVE=20
     networks:
       - app-network
     healthcheck:

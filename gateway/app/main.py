@@ -49,9 +49,13 @@ async def get_http_client() -> httpx.AsyncClient:
     """비동기 HTTP 클라이언트 싱글톤 반환"""
     global _http_client
     if _http_client is None:
+        timeout = int(os.getenv("HTTP_TIMEOUT", "30"))
+        max_keepalive = int(os.getenv("HTTP_MAX_KEEPALIVE", "20"))
+        max_connections = int(os.getenv("HTTP_MAX_CONNECTIONS", "100"))
+        
         _http_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(30.0),
-            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100)
+            timeout=httpx.Timeout(timeout),
+            limits=httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
         )
     return _http_client
 

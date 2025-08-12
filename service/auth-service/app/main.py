@@ -3,6 +3,7 @@ import os
 import sys
 import logging
 import json
+import httpx
 from datetime import datetime
 from contextlib import asynccontextmanager
 
@@ -28,10 +29,38 @@ else:
 
 logger = logging.getLogger("auth_service")
 
+# 비동기 HTTP 클라이언트 (싱글톤 패턴)
+_http_client: httpx.AsyncClient = None
+
+async def get_http_client() -> httpx.AsyncClient:
+    """비동기 HTTP 클라이언트 싱글톤 반환"""
+    global _http_client
+    if _http_client is None:
+        timeout = int(os.getenv("HTTP_TIMEOUT", "30"))
+        max_keepalive = int(os.getenv("HTTP_MAX_KEEPALIVE", "20"))
+        max_connections = int(os.getenv("HTTP_MAX_CONNECTIONS", "100"))
+        
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(timeout),
+            limits=httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
+        )
+    return _http_client
+
+async def close_http_client():
+    """HTTP 클라이언트 정리"""
+    global _http_client
+    if _http_client:
+        await _http_client.aclose()
+        _http_client = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Auth Service 시작")
+    # HTTP 클라이언트 초기화
+    await get_http_client()
     yield
+    # HTTP 클라이언트 정리
+    await close_http_client()
     logger.info("🛑 Auth Service 종료")
 
 app = FastAPI(
@@ -245,6 +274,44 @@ async def service_status():
         logger.info(f"AUTH_SERVICE_STATUS: {json.dumps(status_data, ensure_ascii=False)}")
     
     return status_data
+
+# 외부 API 호출 테스트 엔드포인트
+@app.get("/test-external")
+async def test_external_api():
+    """외부 API 호출 테스트"""
+    try:
+        client = await get_http_client()
+        
+        # Gateway 서비스 호출 테스트
+        gateway_url = os.getenv("GATEWAY_URL", "https://gateway-production-be21.up.railway.app")
+        response = await client.get(f"{gateway_url}/api/v1/health")
+        
+        test_result = {
+            "status": "success",
+            "gateway_health": response.json(),
+            "timestamp": datetime.now().isoformat(),
+            "service": "auth-service"
+        }
+        
+        if IS_RAILWAY:
+            print(f"🚂 AUTH SERVICE EXTERNAL TEST: {json.dumps(test_result, indent=2, ensure_ascii=False)}")
+            logger.info(f"AUTH_SERVICE_EXTERNAL_TEST: {json.dumps(test_result, ensure_ascii=False)}")
+        
+        return test_result
+        
+    except Exception as e:
+        error_result = {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat(),
+            "service": "auth-service"
+        }
+        
+        if IS_RAILWAY:
+            print(f"❌ AUTH SERVICE EXTERNAL TEST ERROR: {json.dumps(error_result, indent=2, ensure_ascii=False)}")
+            logger.error(f"AUTH_SERVICE_EXTERNAL_TEST_ERROR: {json.dumps(error_result, ensure_ascii=False)}")
+        
+        raise HTTPException(status_code=500, detail=f"외부 API 테스트 실패: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
