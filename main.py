@@ -216,8 +216,71 @@ gateway_router = APIRouter(prefix="/api/v1", tags=["Gateway API"])
 async def health_check():
     return {"status": "healthy!", "message": "Gateway API is running"}
 
-# 로그인 페이지 (HTML)
-@app.get("/", summary="로그인 페이지")
+# 회원가입 데이터를 받는 엔드포인트
+@gateway_router.post("/signup", summary="회원가입")
+async def signup(request: Request):
+    """회원가입 처리 - 아이디와 비밀번호를 name, value 형태의 JSON으로 받아서 Railway 로그에 출력"""
+    try:
+        body = await request.json()
+        
+        # Railway 로그에 JSON 형태로 출력
+        railway_log_data = {
+            "event": "user_signup",
+            "timestamp": datetime.now().isoformat(),
+            "user_data": {
+                "name": body.get("id", "unknown"),
+                "value": body.get("password", "unknown")
+            },
+            "source": "gateway_api",
+            "environment": "railway"
+        }
+        
+        # Railway 로그에 출력 (중요!)
+        print(f"🚂 RAILWAY LOG JSON: {json.dumps(railway_log_data, indent=2, ensure_ascii=False)}")
+        logger.info(f"RAILWAY_LOG_JSON: {json.dumps(railway_log_data, ensure_ascii=False)}")
+        
+        # 성공 응답
+        response_data = {
+            "status": "success",
+            "message": "회원가입 성공!",
+            "data": {
+                "name": body.get("id", "unknown"),
+                "value": body.get("password", "unknown")
+            },
+            "railway_logged": True
+        }
+        
+        # Railway 로그에 최종 결과도 출력
+        final_log = {
+            "event": "signup_completed",
+            "timestamp": datetime.now().isoformat(),
+            "result": response_data,
+            "railway_status": "success"
+        }
+        print(f"🚂 RAILWAY FINAL LOG: {json.dumps(final_log, indent=2, ensure_ascii=False)}")
+        logger.info(f"RAILWAY_FINAL_LOG: {json.dumps(final_log, ensure_ascii=False)}")
+        
+        return response_data
+        
+    except Exception as e:
+        error_msg = f"회원가입 오류: {str(e)}"
+        print(f"❌ {error_msg}")
+        logger.error(error_msg)
+        
+        # 에러도 Railway 로그에 출력
+        error_log = {
+            "event": "signup_error",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+            "railway_status": "error"
+        }
+        print(f"🚂 RAILWAY ERROR LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
+        logger.error(f"RAILWAY_ERROR_LOG: {json.dumps(error_log, ensure_ascii=False)}")
+        
+        raise HTTPException(status_code=500, detail=f"회원가입 실패: {str(e)}")
+
+# 로그인 페이지 (HTML) - 회원가입 기능 포함
+@app.get("/", summary="로그인 및 회원가입 페이지")
 async def login_page():
     html_content = """
     <!DOCTYPE html>
@@ -225,7 +288,7 @@ async def login_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>로그인</title>
+        <title>로그인 및 회원가입</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
@@ -233,16 +296,16 @@ async def login_page():
             <div class="bg-white rounded-3xl shadow-2xl px-8 py-12">
                 <div class="text-center mb-12">
                     <h1 class="text-5xl font-bold text-gray-900 tracking-tight">
-                        Login
+                        Sign Up
                     </h1>
                 </div>
-                <form id="loginForm" class="space-y-8">
+                <form id="signupForm" class="space-y-8">
                     <div class="relative">
                         <input
                             type="text"
                             id="id"
                             name="id"
-                            placeholder="Username"
+                            placeholder="아이디 (Username)"
                             class="w-full px-0 py-4 text-lg text-gray-800 placeholder-gray-400 bg-transparent border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-all duration-300"
                             required
                         />
@@ -252,7 +315,7 @@ async def login_page():
                             type="password"
                             id="password"
                             name="password"
-                            placeholder="Password"
+                            placeholder="비밀번호 (Password)"
                             class="w-full px-0 py-4 text-lg text-gray-800 placeholder-gray-400 bg-transparent border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-all duration-300"
                             required
                         />
@@ -261,11 +324,57 @@ async def login_page():
                         type="submit"
                         class="w-full py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 transition-all duration-300 transform hover:scale-105"
                     >
-                        Sign In
+                        회원가입 (Sign Up)
                     </button>
                 </form>
+                
+                <div class="mt-8 text-center">
+                    <p class="text-gray-600 text-sm">
+                        회원가입 버튼을 누르면 아이디와 비밀번호가 Railway 로그에 출력됩니다
+                    </p>
+                </div>
             </div>
         </div>
+
+        <script>
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: document.getElementById('id').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                console.log('🚀 회원가입 데이터 전송 시작...');
+                console.log('📦 전송할 데이터:', formData);
+                
+                const response = await fetch('/api/v1/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                console.log('✅ 회원가입 성공:', result);
+                
+                if (response.ok) {
+                    alert('회원가입 성공!\\n\\n아이디: ' + formData.id + '\\n비밀번호: ' + formData.password + '\\n\\nRailway 로그를 확인하세요!');
+                    
+                    // 폼 초기화
+                    document.getElementById('id').value = '';
+                    document.getElementById('password').value = '';
+                } else {
+                    throw new Error(result.detail || '회원가입 실패');
+                }
+            } catch (error) {
+                console.error('❌ 회원가입 실패:', error);
+                alert('회원가입 실패: ' + error.message);
+            }
+        });
+        </script>
     </body>
     </html>
     """

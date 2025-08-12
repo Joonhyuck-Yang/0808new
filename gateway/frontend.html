@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flow Master 등록 시스템</title>
+    <title>회원가입 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .fade-in {
@@ -19,76 +19,41 @@
     <div class="container mx-auto px-4 py-8">
         <!-- Header -->
         <div class="text-center mb-8 fade-in">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">🚀 Flow Master 등록 시스템</h1>
-            <p class="text-gray-600">프론트엔드에서 입력한 값이 Railway에서 JSON 형태로 출력됩니다</p>
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">🚀 회원가입 시스템</h1>
+            <p class="text-gray-600">아이디와 비밀번호를 입력하면 Railway에서 JSON 형태로 출력됩니다</p>
         </div>
 
         <!-- Main Form -->
-        <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8 fade-in">
-            <form id="flowForm" class="space-y-6">
-                <!-- Name Input -->
+        <div class="max-w-md mx-auto bg-white rounded-2xl shadow-2xl p-8 fade-in">
+            <form id="signupForm" class="space-y-6">
+                <!-- ID Input -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        이름 <span class="text-red-500">*</span>
+                        아이디 (ID) <span class="text-red-500">*</span>
                     </label>
                     <input
                         type="text"
-                        id="name"
-                        name="name"
-                        placeholder="이름을 입력하세요"
+                        id="id"
+                        name="id"
+                        placeholder="아이디를 입력하세요"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         required
                     />
                 </div>
 
-                <!-- Type Input -->
+                <!-- Password Input -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        타입
+                        비밀번호 (Password) <span class="text-red-500">*</span>
                     </label>
-                    <select
-                        id="type"
-                        name="type"
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="비밀번호를 입력하세요"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    >
-                        <option value="">타입을 선택하세요</option>
-                        <option value="process">Process</option>
-                        <option value="workflow">Workflow</option>
-                        <option value="automation">Automation</option>
-                        <option value="manual">Manual</option>
-                    </select>
-                </div>
-
-                <!-- Category Input -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        카테고리
-                    </label>
-                    <select
-                        id="category"
-                        name="category"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    >
-                        <option value="">카테고리를 선택하세요</option>
-                        <option value="business">Business</option>
-                        <option value="technical">Technical</option>
-                        <option value="operational">Operational</option>
-                        <option value="management">Management</option>
-                    </select>
-                </div>
-
-                <!-- Description Input -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        설명
-                    </label>
-                    <textarea
-                        id="description"
-                        name="description"
-                        rows="3"
-                        placeholder="Flow Master에 대한 설명을 입력하세요"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-                    ></textarea>
+                        required
+                    />
                 </div>
 
                 <!-- Submit Button -->
@@ -97,197 +62,81 @@
                     id="submitBtn"
                     class="w-full bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium text-lg shadow-lg"
                 >
-                    🚀 Flow Master 생성
+                    🚀 회원가입
                 </button>
             </form>
-        </div>
 
-        <!-- Response Display -->
-        <div id="responseDisplay" class="max-w-2xl mx-auto mt-8 hidden fade-in">
-            <div class="bg-gray-800 rounded-2xl p-6 text-white">
-                <h3 class="text-xl font-semibold mb-4 text-green-400">✅ 서버 응답 (Railway에서 JSON 출력)</h3>
-                <div class="bg-gray-900 rounded-lg p-4">
-                    <pre id="jsonResponse" class="text-green-400 text-sm overflow-x-auto whitespace-pre-wrap"></pre>
-                </div>
-                <div class="mt-4 text-sm text-gray-300">
-                    <p>📊 이 데이터는 Railway 서버에서 JSON 형태로 처리되어 저장됩니다.</p>
-                </div>
+            <!-- Info Text -->
+            <div class="mt-6 text-center">
+                <p class="text-gray-600 text-sm">
+                    회원가입 버튼을 누르면 아이디와 비밀번호가 Railway 로그에 출력됩니다
+                </p>
             </div>
         </div>
 
-        <!-- Data History -->
-        <div id="dataHistory" class="max-w-2xl mx-auto mt-8 hidden fade-in">
-            <div class="bg-white rounded-2xl shadow-xl p-6">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800">📋 저장된 데이터 히스토리</h3>
-                <div id="historyList" class="space-y-3">
-                    <!-- History items will be populated here -->
-                </div>
-                <button
-                    id="refreshHistoryBtn"
-                    class="mt-4 w-full bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition-all duration-200"
-                >
-                    🔄 히스토리 새로고침
-                </button>
-            </div>
+        <!-- Result Display -->
+        <div id="resultDisplay" class="max-w-md mx-auto mt-6 bg-gray-50 rounded-lg p-4 hidden">
+            <h3 class="text-lg font-medium text-gray-800 mb-2">전송된 데이터</h3>
+            <pre id="resultJson" class="text-sm text-gray-600 bg-white p-3 rounded border overflow-x-auto"></pre>
         </div>
     </div>
 
     <script>
-        // UUID 생성 함수
-        function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        // 현재 시간 포맷팅
-        function formatTimestamp(timestamp) {
-            return new Date(timestamp).toLocaleString('ko-KR');
-        }
-
-        // 폼 제출 처리
-        document.getElementById('flowForm').addEventListener('submit', async function(e) {
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
-            const responseDisplay = document.getElementById('responseDisplay');
-            const jsonResponse = document.getElementById('jsonResponse');
+            const resultDisplay = document.getElementById('resultDisplay');
+            const resultJson = document.getElementById('resultJson');
             
             // 버튼 비활성화
             submitBtn.disabled = true;
-            submitBtn.textContent = '🔄 생성 중...';
+            submitBtn.textContent = '🔄 처리 중...';
             
+            // 결과 표시 초기화
+            resultDisplay.classList.add('hidden');
+            
+            const formData = {
+                id: document.getElementById('id').value,
+                password: document.getElementById('password').value
+            };
+
             try {
-                // 폼 데이터 수집
-                const formData = {
-                    id: generateUUID(),
-                    name: document.getElementById('name').value.trim(),
-                    type: document.getElementById('type').value || null,
-                    category: document.getElementById('category').value || null,
-                    description: document.getElementById('description').value.trim() || null,
-                    unit_id: generateUUID(),
-                    created_at: new Date().toISOString()
-                };
-
-                console.log('📤 전송할 데이터:', formData);
-
-                        // API URL 설정 (Vercel에서 Railway로 요청)
-        const isVercel = window.location.hostname.includes('vercel.app');
-        const apiBaseUrl = isVercel 
-            ? 'https://cloistered-man-production.up.railway.app'  // 실제 Railway URL
-            : '';  // 로컬에서는 상대 경로
-        
-        // API 호출
-        const response = await fetch(`${apiBaseUrl}/api/v1/signup`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData)
-        });
+                console.log('🚀 회원가입 데이터 전송 시작...');
+                console.log('📦 전송할 데이터:', formData);
+                
+                const response = await fetch('/api/v1/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
 
                 const result = await response.json();
-                console.log('✅ 서버 응답:', result);
-
+                console.log('✅ 회원가입 성공:', result);
+                
                 if (response.ok) {
-                    // 성공 응답 표시
-                    const displayData = {
-                        status: "success",
-                        message: "Flow Master가 성공적으로 생성되었습니다!",
-                        input_data: formData,
-                        server_response: result,
-                        timestamp: new Date().toISOString()
-                    };
-
-                    jsonResponse.textContent = JSON.stringify(displayData, null, 2);
-                    responseDisplay.classList.remove('hidden');
+                    // 성공 메시지
+                    alert('회원가입 성공!\\n\\n아이디: ' + formData.id + '\\n비밀번호: ' + formData.password + '\\n\\nRailway 로그를 확인하세요!');
+                    
+                    // 결과 표시
+                    resultJson.textContent = JSON.stringify(result, null, 2);
+                    resultDisplay.classList.remove('hidden');
                     
                     // 폼 초기화
-                    document.getElementById('flowForm').reset();
-                    
-                    // 히스토리 새로고침
-                    await loadDataHistory();
-                    
-                    // 성공 메시지
-                    alert('🎉 Flow Master가 성공적으로 생성되었습니다!\n\nRailway 서버에서 JSON 형태로 데이터가 저장되었습니다.');
+                    document.getElementById('id').value = '';
+                    document.getElementById('password').value = '';
                 } else {
-                    throw new Error(result.detail || 'Flow Master 생성 실패');
+                    throw new Error(result.detail || '회원가입 실패');
                 }
             } catch (error) {
-                console.error('❌ 오류:', error);
-                alert('❌ 오류가 발생했습니다: ' + error.message);
+                console.error('❌ 회원가입 실패:', error);
+                alert('회원가입 실패: ' + error.message);
             } finally {
                 // 버튼 활성화
                 submitBtn.disabled = false;
-                submitBtn.textContent = '🚀 Flow Master 생성';
-            }
-        });
-
-        // 데이터 히스토리 로드
-        async function loadDataHistory() {
-            try {
-                // API URL 설정 (Vercel에서 Railway로 요청)
-                const isVercel = window.location.hostname.includes('vercel.app');
-                const apiBaseUrl = isVercel 
-                    ? 'https://cloistered-man-production.up.railway.app'  // 실제 Railway URL
-                    : '';  // 로컬에서는 상대 경로
-                
-                const response = await fetch(`${apiBaseUrl}/api/v1/signup/data`);
-                const result = await response.json();
-                
-                if (response.ok && result.data && result.data.length > 0) {
-                    const historyList = document.getElementById('historyList');
-                    const dataHistory = document.getElementById('dataHistory');
-                    
-                    historyList.innerHTML = '';
-                    
-                    result.data.forEach((item, index) => {
-                        const historyItem = document.createElement('div');
-                        historyItem.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
-                        
-                        const timestamp = formatTimestamp(item.timestamp);
-                        const data = item.data;
-                        
-                        historyItem.innerHTML = `
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-sm font-medium text-gray-600">#${index + 1}</span>
-                                <span class="text-xs text-gray-500">${timestamp}</span>
-                            </div>
-                            <div class="text-sm text-gray-800">
-                                <strong>이름:</strong> ${data.name || 'N/A'}<br>
-                                <strong>타입:</strong> ${data.type || 'N/A'}<br>
-                                <strong>카테고리:</strong> ${data.category || 'N/A'}<br>
-                                <strong>설명:</strong> ${data.description || 'N/A'}
-                            </div>
-                        `;
-                        
-                        historyList.appendChild(historyItem);
-                    });
-                    
-                    dataHistory.classList.remove('hidden');
-                }
-            } catch (error) {
-                console.error('히스토리 로드 실패:', error);
-            }
-        }
-
-        // 히스토리 새로고침 버튼
-        document.getElementById('refreshHistoryBtn').addEventListener('click', loadDataHistory);
-
-        // 페이지 로드 시 히스토리 로드
-        window.addEventListener('load', loadDataHistory);
-
-        // 입력 필드 실시간 유효성 검사
-        document.getElementById('name').addEventListener('input', function() {
-            const submitBtn = document.getElementById('submitBtn');
-            if (this.value.trim()) {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-50');
-            } else {
-                submitBtn.disabled = true;
-                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = '🚀 회원가입';
             }
         });
     </script>
