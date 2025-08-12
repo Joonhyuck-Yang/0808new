@@ -9,12 +9,13 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# 빌드 캐시 무효화를 위한 타임스탬프 추가
+RUN echo "Build timestamp: $(date)" > /app/build_info.txt
+RUN echo "Cache bust: $(uuidgen)" >> /app/build_info.txt
+
 # Python 의존성 파일 복사 및 설치
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# 캐시 무효화를 위한 타임스탬프 추가
-RUN echo "Build timestamp: $(date)" > /app/build_info.txt
 
 # 애플리케이션 코드 복사
 COPY . .

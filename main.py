@@ -1,3 +1,7 @@
+# CACHE BUSTER - Force Railway to use new version
+# Build ID: 2024-08-12-17-30-00
+# Cache Version: v2.0
+
 import os
 import sys
 import logging
@@ -34,6 +38,7 @@ if IS_RAILWAY:
         handlers=[logging.StreamHandler(sys.stdout)]
     )
     print("🚂 Railway 환경에서 실행 중 - JSON 로그 출력 활성화")
+    print("🔄 CACHE BUSTER: v2.0 - Force new build")
 else:
     logging.basicConfig(
         level=logging.INFO,
