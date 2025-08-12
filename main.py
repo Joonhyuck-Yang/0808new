@@ -228,17 +228,17 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Gateway API 서비스 종료")
 
 app = FastAPI(
-title="Gateway API",
+    title="Gateway API",
     description="Gateway API for ausikor.com",
-version="0.1.0",
-docs_url="/docs",
-lifespan=lifespan
+    version="0.1.0",
+    docs_url="/docs",
+    lifespan=lifespan
 )
 
 # CORS 미들웨어 설정
 app.add_middleware(
-CORSMiddleware,
-allow_origins=[
+    CORSMiddleware,
+    allow_origins=[
         "https://jhyang.info",        # 커스텀 도메인
         "https://www.jhyang.info",    # www 서브도메인
         "http://jhyang.info",         # HTTP 커스텀 도메인 (개발용)
@@ -248,8 +248,8 @@ allow_origins=[
         "http://frontend:3000",       # Docker 내부 네트워크
     ],
     allow_credentials=True,
-allow_methods=["*"],
-allow_headers=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 도메인 검증 미들웨어 추가
