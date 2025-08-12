@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { getDatabase } from '@/lib/database';
+
+const RAILWAY_API_URL = process.env.RAILWAY_API_URL || 'https://your-gateway-url.railway.app';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,31 +32,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = await getDatabase();
+    // Railway API로 회원가입 요청
+    const response = await fetch(`${RAILWAY_API_URL}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, name }),
+    });
 
-    // 기존 사용자 확인
-    const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [email]);
-    if (existingUser) {
+    const data = await response.json();
+
+    if (!response.ok) {
       return NextResponse.json(
-        { success: false, message: '이미 존재하는 이메일입니다.' },
-        { status: 409 }
+        { success: false, message: data.message || '회원가입에 실패했습니다.' },
+        { status: response.status }
       );
     }
-
-    // 비밀번호 해시화
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // 새 사용자 생성
-    const result = await db.run(
-      'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
-      [email, hashedPassword, name]
-    );
 
     return NextResponse.json(
       { 
         success: true, 
         message: '회원가입이 완료되었습니다.',
-        user: { id: result.lastID, email, name }
+        user: data.user
       },
       { status: 201 }
     );
