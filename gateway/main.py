@@ -143,7 +143,7 @@ async def get_signup_data():
             "railway_status": "error"
         }
         print(f"🚂 RAILWAY QUERY ERROR LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
-        logger.error(f"RAILWAY_ERROR_LOG: {json.dumps(error_log, ensure_ascii=False)}")
+        logger.error(f"RAILWAY_QUERY_ERROR_LOG: {json.dumps(error_log, ensure_ascii=False)}")
         
         return JSONResponse(
             status_code=500,
