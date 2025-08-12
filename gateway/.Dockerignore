@@ -1,0 +1,35 @@
+# Git 관련 파일 제외
+.git
+.gitignore
+
+# Python 캐시 파일 제외
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# IDE 파일 제외
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS 파일 제외
+.DS_Store
+Thumbs.db
+
+# 임시 파일 제외
+*.tmp
+*.temp
