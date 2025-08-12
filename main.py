@@ -222,7 +222,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Gateway API 서비스 시작")
     # HTTP 클라이언트 초기화
     await get_http_client()
-yield
+    yield
     # HTTP 클라이언트 정리
     await close_http_client()
     logger.info("🛑 Gateway API 서비스 종료")
