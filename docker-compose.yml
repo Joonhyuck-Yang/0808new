@@ -1,45 +1,51 @@
 version: '3.8'
 
 services:
-  # Auth Service
-  auth-service:
-    build: ./service/auth-service
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile.railway
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
-      - RAILWAY_ENVIRONMENT=false
-      - PORT=8000
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:8000
+      - LOG_LEVEL=INFO
     volumes:
-      - ./service/auth-service:/app
+      - ./gateway:/app
+      - ./data:/app/data
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/auth/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # 게이트웨이 서비스
-  gateway:
-    build: ./gateway
+  auth-service:
+    build:
+      context: ./service/auth-service
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8001:8000"
     environment:
-      - RAILWAY_ENVIRONMENT=false
-      - AUTH_SERVICE_URL=http://auth-service:8000
+      - PORT=8000
+      - LOG_LEVEL=INFO
     volumes:
-      - ./gateway:/app
-      - signup_data:/app/data
+      - ./service/auth-service:/app
     networks:
       - app-network
-    depends_on:
-      auth-service:
-        condition: service_healthy
-
-volumes:
-  signup_data:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   app-network:
-    driver: bridge 
+    driver: bridge
+
+volumes:
+  data: 
