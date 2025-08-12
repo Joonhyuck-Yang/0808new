@@ -249,7 +249,7 @@ async def service_status():
 if __name__ == "__main__":
     import uvicorn
     
-    # Railway 환경변수에서 PORT 가져오기, 없으면 8000 사용
-    port = int(os.getenv("PORT", "8000"))
-    print(f"🚂 Auth Service 시작 - 포트: {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Railway 환경변수에서 PORT 가져오기, 없으면 8001 사용
+port = int(os.getenv("PORT", "8001"))
+print(f"🚂 Auth Service 시작 - 포트: {port}")
+uvicorn.run(app, host="0.0.0.0", port=port)

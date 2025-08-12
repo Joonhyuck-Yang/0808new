@@ -19,7 +19,7 @@ export default function SignupPage() {
       console.log('🚀 회원가입 데이터 전송 시작...');
       console.log('📦 전송할 데이터:', formData);
       
-      const response = await fetch('/api/v1/signup', {
+      const response = await fetch('https://gateway-production-be21.up.railway.app/api/v1/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
