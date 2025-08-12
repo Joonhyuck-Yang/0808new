@@ -1,6 +1,6 @@
 # CACHE BUSTER - Force Railway to use new version
 # Build ID: 2024-08-12-17-30-00
-# Cache Version: v2.0
+# Cache Version: v3.0 - Auth Service 분리
 
 import os
 import sys
@@ -37,15 +37,15 @@ if IS_RAILWAY:
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler(sys.stdout)]
     )
-    print("🚂 Railway 환경에서 실행 중 - JSON 로그 출력 활성화")
-    print("🔄 CACHE BUSTER: v2.0 - Force new build")
+    print("🚂 Gateway - Railway 환경에서 실행 중 - Auth Service로 요청 전달")
+    print("🔄 CACHE BUSTER: v3.0 - Auth Service 분리")
 else:
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler(sys.stdout)]
     )
-    print("🏠 로컬 환경에서 실행 중")
+    print("🏠 Gateway - 로컬 환경에서 실행 중")
 
 logger = logging.getLogger("gateway_api")
 
@@ -164,8 +164,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Gateway API",
-    description="Gateway API for ausikor.com",
-    version="0.1.0",
+    description="Gateway API for ausikor.com - Auth Service 분리 버전",
+    version="0.2.0",
     docs_url="/docs",
     lifespan=lifespan
 )
@@ -214,72 +214,60 @@ gateway_router = APIRouter(prefix="/api/v1", tags=["Gateway API"])
 # 헬스 체크 엔드포인트
 @gateway_router.get("/health", summary="테스트 엔드포인트")
 async def health_check():
-    return {"status": "healthy!", "message": "Gateway API is running"}
+    return {"status": "healthy!", "message": "Gateway API is running", "service": "gateway"}
 
-# 회원가입 데이터를 받는 엔드포인트 (name과 pass만 저장)
-@gateway_router.post("/api/v1/signup", summary="회원가입")
-async def signup(request: Request):
-    """회원가입 처리 - 아이디는 name, 비밀번호는 pass만 저장"""
+# 회원가입 요청을 Auth Service로 전달 (프록시 역할)
+@gateway_router.post("/signup", summary="회원가입 - Auth Service로 전달")
+async def signup_proxy(request: Request):
+    """회원가입 요청을 Auth Service로 전달하는 프록시"""
     try:
         body = await request.json()
         
-        # name과 pass만 추출
-        user_name = body.get("name", "")
-        user_pass = body.get("pass", "")
-        
-        # Railway 로그에 JSON 형태로 출력 (name과 pass만)
-        railway_log_data = {
-            "event": "user_signup",
+        # Gateway 로그에 요청 정보 출력
+        gateway_log = {
+            "event": "signup_proxy_request",
             "timestamp": datetime.now().isoformat(),
-            "user_data": {
-                "name": user_name,
-                "pass": user_pass
-            },
+            "request_data": body,
             "source": "gateway_api",
+            "target_service": "auth_service",
             "environment": "railway"
         }
+        print(f"🚂 GATEWAY PROXY LOG: {json.dumps(gateway_log, indent=2, ensure_ascii=False)}")
+        logger.info(f"GATEWAY_PROXY_LOG: {json.dumps(gateway_log, ensure_ascii=False)}")
         
-        # Railway 로그에 출력 (중요!)
-        print(f"🚂 RAILWAY LOG JSON: {json.dumps(railway_log_data, indent=2, ensure_ascii=False)}")
-        logger.info(f"RAILWAY_LOG_JSON: {json.dumps(railway_log_data, ensure_ascii=False)}")
+        # Auth Service로 요청 전달
+        response_data = await call_auth_service("/signup", "POST", body)
         
-        # 성공 응답 (name과 pass만)
-        response_data = {
-            "status": "success",
-            "message": "회원가입 성공!",
-            "data": {
-                "name": user_name,
-                "pass": user_pass
-            },
-            "railway_logged": True
-        }
-        
-        # Railway 로그에 최종 결과도 출력
-        final_log = {
-            "event": "signup_completed",
+        # Gateway 로그에 응답 정보 출력
+        response_log = {
+            "event": "signup_proxy_response",
             "timestamp": datetime.now().isoformat(),
-            "result": response_data,
-            "railway_status": "success"
+            "response_data": response_data,
+            "source": "gateway_api",
+            "target_service": "auth_service",
+            "environment": "railway"
         }
-        print(f"🚂 RAILWAY FINAL LOG: {json.dumps(final_log, indent=2, ensure_ascii=False)}")
-        logger.info(f"RAILWAY_FINAL_LOG: {json.dumps(final_log, indent=2, ensure_ascii=False)}")
+        print(f"🚂 GATEWAY RESPONSE LOG: {json.dumps(response_log, indent=2, ensure_ascii=False)}")
+        logger.info(f"GATEWAY_RESPONSE_LOG: {json.dumps(response_log, ensure_ascii=False)}")
         
         return response_data
         
     except Exception as e:
-        error_msg = f"회원가입 오류: {str(e)}"
-        print(f"❌ {error_msg}")
+        error_msg = f"회원가입 프록시 오류: {str(e)}"
+        print(f"❌ GATEWAY PROXY ERROR: {error_msg}")
         logger.error(error_msg)
         
-        # 에러도 Railway 로그에 출력
+        # 에러도 Gateway 로그에 출력
         error_log = {
-            "event": "signup_error",
+            "event": "signup_proxy_error",
             "timestamp": datetime.now().isoformat(),
             "error": str(e),
+            "source": "gateway_api",
+            "target_service": "auth_service",
             "railway_status": "error"
         }
-        print(f"🚂 RAILWAY ERROR LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
-        logger.error(f"RAILWAY_ERROR_LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
+        print(f"🚂 GATEWAY ERROR LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
+        logger.error(f"GATEWAY_ERROR_LOG: {json.dumps(error_log, ensure_ascii=False)}")
         
         raise HTTPException(status_code=500, detail=f"회원가입 실패: {str(e)}")
 
@@ -420,6 +408,6 @@ def handler(request, context):
 if __name__ == "__main__":
     import uvicorn
     
-    # Railway 환경변수에서 PORT 가져오기, 없으면 8080 사용
-    port = int(os.getenv("PORT", "8080"))
+    # Railway 환경변수에서 PORT 가져오기, 없으면 8000 사용
+    port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host="0.0.0.0", port=port)
