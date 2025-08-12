@@ -21,10 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 헬스 체크 엔드포인트
-@app.get("/api/v1/health")
-async def health_check():
-    return {"status": "healthy!", "message": "Gateway API is running"}
+# 헬스 체크 엔드포인트 제거됨
 
 # 회원가입 엔드포인트
 @app.post("/api/v1/signup")
