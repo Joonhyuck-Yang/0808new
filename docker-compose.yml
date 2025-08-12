@@ -3,7 +3,7 @@ version: '3.8'
 services:
   gateway:
     build:
-      context: .
+      context: ./gateway
       dockerfile: Dockerfile
     ports:
       - "${PORT:-8080}:8080"
@@ -12,6 +12,9 @@ services:
       - AUTH_SERVICE_URL=https://auth-service-production-aabc.up.railway.app
       - RAILWAY_ENVIRONMENT=true
       - LOG_LEVEL=INFO
+      - HTTP_TIMEOUT=30
+      - HTTP_MAX_CONNECTIONS=100
+      - HTTP_MAX_KEEPALIVE=20
     depends_on:
       - auth-service
     networks:
