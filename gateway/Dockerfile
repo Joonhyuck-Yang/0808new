@@ -17,13 +17,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 소스 코드 복사
 COPY . .
 
-# 포트 노출 (고정 포트)
+# 포트 노출 (Railway가 동적으로 할당)
 EXPOSE 8080
 
 # 환경변수 설정
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
-ENV PORT=8080
 
-# FastAPI 서버 실행 (Railway 환경변수 $PORT 사용)
+# Railway 환경변수 $PORT를 사용하는 실행 명령어 (Railway 최적화)
 CMD python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT

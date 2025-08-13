@@ -1,47 +1,50 @@
 version: '3.8'
 
 services:
+  # Gateway 서비스
   gateway:
-    build:
-      context: ./gateway
-      dockerfile: Dockerfile
+    build: ./gateway
     ports:
-      - "${PORT:-8080}:8080"
+      - "8080:8080"
     environment:
       - PORT=8080
-      - AUTH_SERVICE_URL=https://auth-service-production-aabc.up.railway.app
       - RAILWAY_ENVIRONMENT=true
-      - LOG_LEVEL=INFO
-      - HTTP_TIMEOUT=30
-      - HTTP_MAX_CONNECTIONS=100
-      - HTTP_MAX_KEEPALIVE=20
+      - AUTH_SERVICE_URL=http://auth-service:8001
     depends_on:
       - auth-service
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
+  # Auth Service
   auth-service:
-    build:
-      context: ./service/auth-service
-      dockerfile: Dockerfile
+    build: ./service/auth-service
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
-      - PORT=8000
+      - PORT=8001
       - RAILWAY_ENVIRONMENT=true
-      - LOG_LEVEL=INFO
-      - GATEWAY_URL=https://gateway-production-be21.up.railway.app
-      - HTTP_TIMEOUT=30
-      - HTTP_MAX_CONNECTIONS=100
-      - HTTP_MAX_KEEPALIVE=20
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/educated
+    depends_on:
+      - postgres
     networks:
       - app-network
+
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=educated
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
 
 networks:
   app-network:
