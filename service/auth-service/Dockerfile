@@ -23,6 +23,8 @@ EXPOSE 8001
 # 환경변수 설정
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
+ENV PORT=8001
 
 # Railway 환경변수 $PORT를 사용하는 실행 명령어 (Railway 최적화)
-CMD python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# PORT가 설정되지 않았을 때 기본값 8001 사용
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}
