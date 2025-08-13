@@ -19,5 +19,5 @@ COPY . .
 # 포트 노출 (Railway에서 자동으로 설정)
 EXPOSE $PORT
 
-# 애플리케이션 실행 (Railway에서 PORT 환경변수 사용)
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT 
+# 애플리케이션 실행 (환경변수 PORT 사용, 기본값 8000)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"] 
