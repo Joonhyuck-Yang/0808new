@@ -11,29 +11,28 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Railway 환경 확인
+# Railway 환경 확인 (Gateway와 동일)
 IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") == "true" or os.getenv("PORT") is not None
 
-# 로깅 설정
+# 로깅 설정 (Gateway와 동일)
 if IS_RAILWAY:
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler(sys.stdout)]
     )
-    print("🚂 Auth Service - Railway 환경에서 실행 중")
-    print("📝 회원가입 요청을 받아서 Railway 로그에 출력합니다")
+    print("🚂 Auth Service - Railway 환경에서 실행 중 - 포트 8001")
 else:
     logging.basicConfig(level=logging.INFO)
     print("🏠 Auth Service - 로컬 환경에서 실행 중")
 
 logger = logging.getLogger("auth_service")
 
-# 비동기 HTTP 클라이언트 (싱글톤 패턴)
+# 비동기 HTTP 클라이언트 (싱글톤 패턴 - Gateway와 동일)
 _http_client: httpx.AsyncClient = None
 
 async def get_http_client() -> httpx.AsyncClient:
-    """비동기 HTTP 클라이언트 싱글톤 반환"""
+    """비동기 HTTP 클라이언트 싱글톤 반환 (Gateway와 동일)"""
     global _http_client
     if _http_client is None:
         timeout = int(os.getenv("HTTP_TIMEOUT", "30"))
@@ -47,7 +46,7 @@ async def get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 async def close_http_client():
-    """HTTP 클라이언트 정리"""
+    """HTTP 클라이언트 정리 (Gateway와 동일)"""
     global _http_client
     if _http_client:
         await _http_client.aclose()
@@ -55,17 +54,17 @@ async def close_http_client():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 Auth Service 시작")
-    # HTTP 클라이언트 초기화
+    logger.info("🚀 Auth Service 시작 (포트 8001)")
+    # HTTP 클라이언트 초기화 (Gateway와 동일)
     await get_http_client()
     yield
-    # HTTP 클라이언트 정리
+    # HTTP 클라이언트 정리 (Gateway와 동일)
     await close_http_client()
     logger.info("🛑 Auth Service 종료")
 
 app = FastAPI(
     title="Auth Service",
-    description="Authentication and Authorization Service",
+    description="Authentication and Authorization Service (포트 8001)",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -81,15 +80,16 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    """헬스 체크"""
+    """헬스 체크 (Gateway와 동일한 패턴)"""
     health_data = {
         "status": "healthy", 
         "service": "auth-service",
         "timestamp": datetime.now().isoformat(),
-        "environment": "railway" if IS_RAILWAY else "local"
+        "environment": "railway" if IS_RAILWAY else "local",
+        "port": 8001
     }
     
-    # Railway 로그에 헬스체크 정보 출력
+    # Railway 로그에 헬스체크 정보 출력 (Gateway와 동일한 패턴)
     if IS_RAILWAY:
         print(f"🚂 AUTH SERVICE HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
         logger.info(f"AUTH_SERVICE_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
@@ -313,9 +313,4 @@ async def test_external_api():
         
         raise HTTPException(status_code=500, detail=f"외부 API 테스트 실패: {str(e)}")
 
-# Docker에서 uvicorn으로 실행되므로 직접 실행 코드 제거 (Gateway와 동일)
-# if __name__ == "__main__":
-#     import uvicorn
-#     port = int(os.getenv("PORT", "8000"))
-#     print(f"🚂 Auth Service 시작 - 포트: {port}")
-#     uvicorn.run(app, host="0.0.0.0", port=port)
+# Docker에서 uvicorn으로 실행되므로 직접 실행 코드 제거 (Gateway와 완전히 동일)

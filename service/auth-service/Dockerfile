@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사
 COPY . .
 
-# 포트 노출 (Gateway와 동일한 패턴)
-EXPOSE 8000
+# 포트 노출 (포트 8001 사용)
+EXPOSE 8001
 
-# 애플리케이션 실행 (Gateway와 동일한 패턴)
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 애플리케이션 실행 (포트 8001 사용)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
