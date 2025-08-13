@@ -13,8 +13,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 애플리케이션 코드 복사
-COPY . .
+# 애플리케이션 코드 복사 (app 폴더 구조 유지)
+COPY app/ ./app/
+COPY requirements.txt .
 
 # 포트 노출 (Railway 환경변수 우선, 없으면 8001 사용)
 EXPOSE ${PORT:-8001}
@@ -23,5 +24,5 @@ EXPOSE ${PORT:-8001}
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
 
-# uvicorn으로 실행 (Railway 환경변수 우선, 없으면 8001 사용)
+# uvicorn으로 실행 (app.main:app 경로 사용)
 CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
