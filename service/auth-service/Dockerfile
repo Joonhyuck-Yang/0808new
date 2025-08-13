@@ -24,5 +24,5 @@ EXPOSE ${PORT:-8001}
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
 
-# uvicorn으로 실행 (app.main:app 경로 사용)
-CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
+# uvicorn으로 실행 (더 안전한 방법)
+CMD ["sh", "-c", "ls -la /app && ls -la /app/app && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
