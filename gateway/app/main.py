@@ -24,6 +24,7 @@ if IS_RAILWAY:
         handlers=[logging.StreamHandler(sys.stdout)]
     )
     print("🚂 Gateway - Railway 환경에서 실행 중 - Auth Service로 요청 전달")
+    print("🚂 Gateway - 배포 시작!")
 else:
     logging.basicConfig(level=logging.INFO)
     print("🏠 Gateway - 로컬 환경에서 실행 중")
@@ -225,7 +226,7 @@ async def signup_proxy(request: Request):
         print(f"🚂 GATEWAY PROXY LOG: {json.dumps(gateway_log, indent=2, ensure_ascii=False)}")
         logger.info(f"GATEWAY_PROXY_LOG: {json.dumps(gateway_log, ensure_ascii=False)}")
         
-        # Auth Service로 요청 전달
+        # Auth Service로 요청 전달 (JSON 형태로 그대로 전달)
         response_data = await call_auth_service_with_fallback("/signup", "POST", body, "회원가입")
         
         # Gateway 로그에 응답 정보 출력

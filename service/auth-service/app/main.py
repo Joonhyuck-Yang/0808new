@@ -1,9 +1,8 @@
-# Auth Service - 회원가입 및 인증 처리
+# Auth Service - 회원가입 처리 (간소화)
 import os
 import sys
 import logging
 import json
-import httpx
 import asyncpg
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -12,10 +11,10 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Railway 환경 확인 (Gateway와 동일)
+# Railway 환경 확인
 IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") == "true" or os.getenv("PORT") is not None
 
-# 로깅 설정 (Gateway와 동일)
+# 로깅 설정
 if IS_RAILWAY:
     logging.basicConfig(
         level=logging.INFO,
@@ -23,6 +22,7 @@ if IS_RAILWAY:
         handlers=[logging.StreamHandler(sys.stdout)]
     )
     print("🚂 Auth Service - Railway 환경에서 실행 중")
+    print("🚂 Auth Service - 배포 시작!")
 else:
     logging.basicConfig(level=logging.INFO)
     print("🏠 Auth Service - 로컬 환경에서 실행 중")
@@ -52,47 +52,20 @@ async def get_db_connection():
         logger.error(f"DB 연결 실패: {str(e)}")
         return None
 
-# 비동기 HTTP 클라이언트 (싱글톤 패턴 - Gateway와 동일)
-_http_client: httpx.AsyncClient = None
-
-async def get_http_client() -> httpx.AsyncClient:
-    """비동기 HTTP 클라이언트 싱글톤 반환 (Gateway와 동일)"""
-    global _http_client
-    if _http_client is None:
-        timeout = int(os.getenv("HTTP_TIMEOUT", "30"))
-        max_keepalive = int(os.getenv("HTTP_MAX_KEEPALIVE", "20"))
-        max_connections = int(os.getenv("HTTP_MAX_CONNECTIONS", "100"))
-        
-        _http_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(timeout),
-            limits=httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
-        )
-    return _http_client
-
-async def close_http_client():
-    """HTTP 클라이언트 정리 (Gateway와 동일)"""
-    global _http_client
-    if _http_client:
-        await _http_client.aclose()
-        _http_client = None
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Auth Service 시작")
-    # HTTP 클라이언트 초기화 (Gateway와 동일)
-    await get_http_client()
     # DB 연결 테스트
     db_conn = await get_db_connection()
     if db_conn:
         await db_conn.close()
+        print("🚂 Auth Service - DB 연결 테스트 성공")
     yield
-    # HTTP 클라이언트 정리 (Gateway와 동일)
-    await close_http_client()
     logger.info("🛑 Auth Service 종료")
 
 app = FastAPI(
     title="Auth Service",
-    description="Authentication and Authorization Service",
+    description="Authentication Service - 회원가입만 처리",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -108,7 +81,7 @@ app.add_middleware(
 
 @app.post("/signup")
 async def signup(request: Request):
-    """회원가입 처리 - id와 pass를 DB에 저장"""
+    """회원가입 처리 - Gateway에서 받은 id, pass를 그대로 DB에 저장"""
     try:
         # 요청 시작 로그
         start_time = datetime.now()
@@ -117,7 +90,7 @@ async def signup(request: Request):
         
         body = await request.json()
         
-        # id와 pass만 추출
+        # Gateway에서 받은 id와 pass를 그대로 사용
         user_id = body.get("id", "")
         user_pass = body.get("pass", "")
         
@@ -136,7 +109,8 @@ async def signup(request: Request):
                 "pass_empty": not user_pass
             },
             "source": "auth_service",
-            "environment": "railway"
+            "environment": "railway",
+            "message": "Gateway에서 받은 데이터를 그대로 사용"
         }
         print(f"🚂 AUTH SERVICE VALIDATION LOG: {json.dumps(validation_log, indent=2, ensure_ascii=False)}")
         logger.info(f"AUTH_SERVICE_VALIDATION_LOG: {json.dumps(validation_log, ensure_ascii=False)}")
@@ -148,7 +122,7 @@ async def signup(request: Request):
             logger.error(f"AUTH_SERVICE_VALIDATION_ERROR: {error_msg}")
             raise HTTPException(status_code=400, detail=error_msg)
         
-        # Railway DB에 사용자 정보 저장
+        # Railway DB에 사용자 정보 저장 (받은 데이터를 그대로 저장)
         db_saved = False
         try:
             if IS_RAILWAY:
@@ -164,7 +138,7 @@ async def signup(request: Request):
                         )
                     """)
                     
-                    # 사용자 정보 저장
+                    # Gateway에서 받은 id, pass를 그대로 DB에 저장
                     await db_conn.execute(
                         "INSERT INTO users (username, password) VALUES ($1, $2)",
                         user_id, user_pass
@@ -173,6 +147,22 @@ async def signup(request: Request):
                     await db_conn.close()
                     db_saved = True
                     print(f"🚂 AUTH SERVICE - DB 저장 성공: {user_id}")
+                    
+                    # Railway 로그에 DB 저장 성공 메시지 출력
+                    db_success_log = {
+                        "event": "db_save_success",
+                        "timestamp": datetime.now().isoformat(),
+                        "user_id": user_id,
+                        "message": "Gateway에서 받은 사용자 정보가 Railway PostgreSQL DB에 성공적으로 저장되었습니다!",
+                        "db_table": "users",
+                        "db_columns": ["username", "password"],
+                        "data_source": "Gateway 프록시",
+                        "source": "auth_service",
+                        "environment": "railway"
+                    }
+                    print(f"🚂 AUTH SERVICE DB SUCCESS: {json.dumps(db_success_log, indent=2, ensure_ascii=False)}")
+                    logger.info(f"AUTH_SERVICE_DB_SUCCESS: {json.dumps(db_success_log, ensure_ascii=False)}")
+                    
                 else:
                     print(f"⚠️ AUTH SERVICE - DB 연결 실패, 저장 생략")
             else:
@@ -191,6 +181,7 @@ async def signup(request: Request):
                 "pass": user_pass
             },
             "db_saved": db_saved,
+            "data_flow": "프론트엔드 → Gateway → Auth Service → Railway DB",
             "source": "auth_service",
             "environment": "railway",
             "request_id": f"signup_{start_time.strftime('%Y%m%d_%H%M%S')}"
@@ -247,58 +238,6 @@ async def signup(request: Request):
         
         raise HTTPException(status_code=500, detail=f"회원가입 실패: {str(e)}")
 
-@app.post("/login")
-async def login(request: Request):
-    """로그인 처리 - id와 pass 사용"""
-    try:
-        start_time = datetime.now()
-        print(f"🚂 AUTH SERVICE LOGIN START: {start_time.isoformat()}")
-        logger.info(f"AUTH_SERVICE_LOGIN_START: {start_time.isoformat()}")
-        
-        body = await request.json()
-        user_id = body.get("id", "")
-        user_pass = body.get("pass", "")
-        
-        # 로그인 시도 로그
-        login_attempt_log = {
-            "event": "login_attempt",
-            "timestamp": datetime.now().isoformat(),
-            "user_id": user_id,
-            "source": "auth_service",
-            "environment": "railway"
-        }
-        print(f"🚂 AUTH SERVICE LOGIN ATTEMPT: {json.dumps(login_attempt_log, indent=2, ensure_ascii=False)}")
-        logger.info(f"AUTH_SERVICE_LOGIN_ATTEMPT: {json.dumps(login_attempt_log, ensure_ascii=False)}")
-        
-        # 간단한 로그인 검증 (실제로는 데이터베이스 확인 필요)
-        if user_id and user_pass:
-            success_log = {
-                "event": "login_success",
-                "timestamp": datetime.now().isoformat(),
-                "user_id": user_id,
-                "source": "auth_service",
-                "environment": "railway",
-                "processing_time_ms": (datetime.now() - start_time).total_seconds() * 1000
-            }
-            print(f"🚂 AUTH SERVICE LOGIN SUCCESS: {json.dumps(success_log, indent=2, ensure_ascii=False)}")
-            logger.info(f"AUTH_SERVICE_LOGIN_SUCCESS: {json.dumps(success_log, ensure_ascii=False)}")
-            
-            return {
-                "status": "success",
-                "message": "로그인 성공!",
-                "user": {"id": user_id},
-                "service": "auth-service"
-            }
-        else:
-            error_msg = "아이디와 비밀번호를 입력해주세요"
-            print(f"❌ AUTH SERVICE LOGIN ERROR: {error_msg}")
-            logger.error(f"AUTH_SERVICE_LOGIN_ERROR: {error_msg}")
-            raise HTTPException(status_code=400, detail=error_msg)
-            
-    except Exception as e:
-        logger.error(f"로그인 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"로그인 실패: {str(e)}")
-
 @app.get("/status")
 async def service_status():
     """서비스 상태 확인"""
@@ -308,10 +247,9 @@ async def service_status():
         "timestamp": datetime.now().isoformat(),
         "environment": "railway" if IS_RAILWAY else "local",
         "endpoints": [
-            "/signup",
-            "/login",
-            "/status"
-        ]
+            "/signup"
+        ],
+        "description": "회원가입만 처리하는 간소화된 Auth Service - Gateway에서 받은 데이터를 DB에 저장"
     }
     
     if IS_RAILWAY:
@@ -320,4 +258,4 @@ async def service_status():
     
     return status_data
 
-# Docker에서 uvicorn으로 실행되므로 직접 실행 코드 제거 (Gateway와 완전히 동일)
+# Docker에서 uvicorn으로 실행되므로 직접 실행 코드 제거
