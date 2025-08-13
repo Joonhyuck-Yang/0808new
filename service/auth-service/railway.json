@@ -5,6 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
+    "startCommand": "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
@@ -13,13 +14,8 @@
   "environments": {
     "production": {
       "variables": {
-        "HOST": "0.0.0.0",
-        "DEBUG": "false",
-        "LOG_LEVEL": "INFO",
-        "LOG_FORMAT": "json",
-        "SECRET_KEY": "auth-service-secret-key-change-in-production",
-        "ALGORITHM": "HS256",
-        "ACCESS_TOKEN_EXPIRE_MINUTES": "30"
+        "RAILWAY_ENVIRONMENT": "true",
+        "PORT": "8001"
       }
     }
   }

@@ -256,16 +256,36 @@ async def service_status():
     
     return status_data
 
-@app.get("/auth/health")
-async def health_check():
-    """Railway 헬스체크용 엔드포인트 - 배포 성공을 위해 필수!"""
+@app.get("/health")
+async def health_check_railway():
+    """Railway 헬스체크용 엔드포인트 - Railway가 요구하는 /health 경로"""
     health_data = {
         "status": "healthy",
         "service": "auth-service",
         "timestamp": datetime.now().isoformat(),
         "port": os.getenv("PORT", "8001"),
         "environment": "railway" if IS_RAILWAY else "local",
-        "railway_health_check": True
+        "railway_health_check": True,
+        "endpoint": "/health"
+    }
+    
+    if IS_RAILWAY:
+        print(f"🚂 AUTH SERVICE RAILWAY HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
+        logger.info(f"AUTH_SERVICE_RAILWAY_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
+    
+    return health_data
+
+@app.get("/auth/health")
+async def health_check():
+    """기존 헬스체크 엔드포인트 - /auth/health 경로"""
+    health_data = {
+        "status": "healthy",
+        "service": "auth-service",
+        "timestamp": datetime.now().isoformat(),
+        "port": os.getenv("PORT", "8001"),
+        "environment": "railway" if IS_RAILWAY else "local",
+        "railway_health_check": True,
+        "endpoint": "/auth/health"
     }
     
     if IS_RAILWAY:

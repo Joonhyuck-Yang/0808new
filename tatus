@@ -322,3 +322,8 @@
  TAB ...................................... Complete filename & cycle.
  SHIFT-TAB ...................... ESC-TAB   Complete filename & reverse cycle.
  ctrl-L ................................... Complete filename, list all.
+[33m3a1d46c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m Fix Docker file path issue: update Dockerfile and add .dockerignore for proper app structure
+[33m4079587[m Enhance Gateway with fallback logic and service monitoring to prevent 502 errors
+[33mbf8da69[m Fix Railway deployment: add health check endpoint and dynamic port support
+[33m8f76d84[m Update auth service and fix typos
+[33m64249fa[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m auth- uvicon modiver1
