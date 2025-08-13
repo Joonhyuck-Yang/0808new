@@ -5,7 +5,7 @@ import axios from 'axios';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
-    name: '',
+    id: '',
     pass: ''
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -32,8 +32,8 @@ export default function SignupPage() {
       if (response.status === 200 || response.status === 201) {
         setResult(result);
         // 폼 초기화
-        setFormData({ name: '', pass: '' });
-        alert('회원가입 성공!\\n\\n아이디: ' + formData.name + '\\n비밀번호: ' + formData.pass + '\\n\\nRailway 로그를 확인하세요!');
+        setFormData({ id: '', pass: '' });
+        alert('회원가입 성공!\\n\\n아이디: ' + formData.id + '\\n비밀번호: ' + formData.pass + '\\n\\nRailway 로그를 확인하세요!');
       } else {
         throw new Error(result.detail || result.message || '회원가입 실패');
       }
@@ -84,9 +84,9 @@ export default function SignupPage() {
             <div className="relative">
               <input
                 type="text"
-                id="name"
-                name="name"
-                value={formData.name}
+                id="id"
+                name="id"
+                value={formData.id}
                 onChange={handleInputChange}
                 placeholder="아이디 (Username)"
                 className="w-full px-0 py-4 text-lg text-gray-800 placeholder-gray-400 bg-transparent border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-all duration-300"

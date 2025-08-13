@@ -24,5 +24,5 @@ EXPOSE ${PORT:-8001}
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
 
-# 디버깅: 파일 구조 확인 후 실행
-CMD ["sh", "-c", "echo '=== File Structure ===' && ls -la && echo '=== App Directory ===' && ls -la app/ && echo '=== Starting Service ===' && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
+# 간단하고 확실한 실행 명령어
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

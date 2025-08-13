@@ -11,7 +11,7 @@ export default function LoginPage() {
   // Form state management
   const [formData, setFormData] = useState({
     id: '',
-    password: ''
+    pass: ''
   });
 
   // Form input handler
@@ -27,10 +27,10 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 입력값을 JSON 형태로 변환 (ID와 password만)
+    // 입력값을 JSON 형태로 변환 (ID와 pass만)
     const loginData = {
       id: formData.id,
-      password: formData.password
+      pass: formData.pass
     };
     
     // JSON 형태로 저장 (localStorage에 저장)
@@ -75,8 +75,8 @@ export default function LoginPage() {
             <div className="relative">
               <input
                 type="password"
-                name="password"
-                value={formData.password}
+                name="pass"
+                value={formData.pass}
                 onChange={handleInputChange}
                 placeholder="Password"
                 className="w-full px-0 py-4 text-lg text-gray-800 placeholder-gray-400 bg-transparent border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-all duration-300"

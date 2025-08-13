@@ -4,6 +4,7 @@ import sys
 import logging
 import json
 import httpx
+import asyncpg
 from datetime import datetime
 from contextlib import asynccontextmanager
 
@@ -27,6 +28,29 @@ else:
     print("🏠 Auth Service - 로컬 환경에서 실행 중")
 
 logger = logging.getLogger("auth_service")
+
+# Railway PostgreSQL 연결 설정
+async def get_db_connection():
+    """Railway PostgreSQL 데이터베이스 연결"""
+    try:
+        if IS_RAILWAY:
+            # Railway 환경변수에서 DB 정보 가져오기
+            database_url = os.getenv("DATABASE_URL")
+            if database_url:
+                conn = await asyncpg.connect(database_url)
+                print(f"🚂 Auth Service - Railway DB 연결 성공")
+                return conn
+            else:
+                print(f"⚠️ Auth Service - DATABASE_URL 환경변수 없음")
+                return None
+        else:
+            # 로컬 환경에서는 연결하지 않음
+            print(f"🏠 Auth Service - 로컬 환경, DB 연결 생략")
+            return None
+    except Exception as e:
+        print(f"❌ Auth Service - DB 연결 실패: {str(e)}")
+        logger.error(f"DB 연결 실패: {str(e)}")
+        return None
 
 # 비동기 HTTP 클라이언트 (싱글톤 패턴 - Gateway와 동일)
 _http_client: httpx.AsyncClient = None
@@ -57,6 +81,10 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Auth Service 시작 (포트 8001)")
     # HTTP 클라이언트 초기화 (Gateway와 동일)
     await get_http_client()
+    # DB 연결 테스트
+    db_conn = await get_db_connection()
+    if db_conn:
+        await db_conn.close()
     yield
     # HTTP 클라이언트 정리 (Gateway와 동일)
     await close_http_client()
@@ -80,7 +108,7 @@ app.add_middleware(
 
 @app.post("/signup")
 async def signup(request: Request):
-    """회원가입 처리 - name과 pass만 저장"""
+    """회원가입 처리 - id와 pass를 DB에 저장"""
     try:
         # 요청 시작 로그
         start_time = datetime.now()
@@ -89,8 +117,8 @@ async def signup(request: Request):
         
         body = await request.json()
         
-        # name과 pass만 추출
-        user_name = body.get("name", "")
+        # id와 pass만 추출
+        user_id = body.get("id", "")
         user_pass = body.get("pass", "")
         
         # 입력 데이터 검증 로그
@@ -98,13 +126,13 @@ async def signup(request: Request):
             "event": "signup_validation",
             "timestamp": datetime.now().isoformat(),
             "input_data": {
-                "name": user_name,
+                "id": user_id,
                 "pass": user_pass
             },
             "validation": {
-                "name_length": len(user_name),
+                "id_length": len(user_id),
                 "pass_length": len(user_pass),
-                "name_empty": not user_name,
+                "id_empty": not user_id,
                 "pass_empty": not user_pass
             },
             "source": "auth_service",
@@ -114,20 +142,55 @@ async def signup(request: Request):
         logger.info(f"AUTH_SERVICE_VALIDATION_LOG: {json.dumps(validation_log, ensure_ascii=False)}")
         
         # 입력 검증
-        if not user_name or not user_pass:
+        if not user_id or not user_pass:
             error_msg = "아이디와 비밀번호를 모두 입력해주세요"
             print(f"❌ AUTH SERVICE VALIDATION ERROR: {error_msg}")
             logger.error(f"AUTH_SERVICE_VALIDATION_ERROR: {error_msg}")
             raise HTTPException(status_code=400, detail=error_msg)
         
-        # Railway 로그에 JSON 형태로 출력 (name과 pass만)
+        # Railway DB에 사용자 정보 저장
+        db_saved = False
+        try:
+            if IS_RAILWAY:
+                db_conn = await get_db_connection()
+                if db_conn:
+                    # users 테이블 생성 (없는 경우)
+                    await db_conn.execute("""
+                        CREATE TABLE IF NOT EXISTS users (
+                            id SERIAL PRIMARY KEY,
+                            username VARCHAR(100) UNIQUE NOT NULL,
+                            password VARCHAR(255) NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    
+                    # 사용자 정보 저장
+                    await db_conn.execute(
+                        "INSERT INTO users (username, password) VALUES ($1, $2)",
+                        user_id, user_pass
+                    )
+                    
+                    await db_conn.close()
+                    db_saved = True
+                    print(f"🚂 AUTH SERVICE - DB 저장 성공: {user_id}")
+                else:
+                    print(f"⚠️ AUTH SERVICE - DB 연결 실패, 저장 생략")
+            else:
+                print(f"🏠 AUTH SERVICE - 로컬 환경, DB 저장 생략")
+        except Exception as db_error:
+            print(f"❌ AUTH SERVICE - DB 저장 실패: {str(db_error)}")
+            logger.error(f"DB 저장 실패: {str(db_error)}")
+            # DB 저장 실패해도 계속 진행 (로깅만)
+        
+        # Railway 로그에 JSON 형태로 출력 (id와 pass만)
         railway_log_data = {
             "event": "user_signup",
             "timestamp": datetime.now().isoformat(),
             "user_data": {
-                "name": user_name,
+                "id": user_id,
                 "pass": user_pass
             },
+            "db_saved": db_saved,
             "source": "auth_service",
             "environment": "railway",
             "request_id": f"signup_{start_time.strftime('%Y%m%d_%H%M%S')}"
@@ -137,14 +200,15 @@ async def signup(request: Request):
         print(f"🚂 AUTH SERVICE RAILWAY LOG: {json.dumps(railway_log_data, indent=2, ensure_ascii=False)}")
         logger.info(f"AUTH_SERVICE_RAILWAY_LOG: {json.dumps(railway_log_data, ensure_ascii=False)}")
         
-        # 성공 응답 (name과 pass만)
+        # 성공 응답 (id와 pass만)
         response_data = {
             "status": "success",
             "message": "회원가입 성공!",
             "data": {
-                "name": user_name,
+                "id": user_id,
                 "pass": user_pass
             },
+            "db_saved": db_saved,
             "railway_logged": True,
             "service": "auth-service",
             "request_id": railway_log_data["request_id"]
