@@ -313,10 +313,9 @@ async def test_external_api():
         
         raise HTTPException(status_code=500, detail=f"외부 API 테스트 실패: {str(e)}")
 
-if __name__ == "__main__":
-    import uvicorn
-    
-        # Railway 환경변수에서 PORT 가져오기, 없으면 8000 사용
-    port = int(os.getenv("PORT", "8000"))
-    print(f"🚂 Auth Service 시작 - 포트: {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+# Docker에서 uvicorn으로 실행되므로 직접 실행 코드 제거
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = int(os.getenv("PORT", "8000"))
+#     print(f"🚂 Auth Service 시작 - 포트: {port}")
+#     uvicorn.run(app, host="0.0.0.0", port=port)

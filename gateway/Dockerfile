@@ -20,5 +20,5 @@ COPY . .
 # 포트 노출
 EXPOSE 8080
 
-# FastAPI 서버 실행 (main.py 직접 실행)
-CMD ["python", "main.py"]
+# FastAPI 서버 실행 (app/main.py 실행)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
