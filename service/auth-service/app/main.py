@@ -22,7 +22,7 @@ if IS_RAILWAY:
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[logging.StreamHandler(sys.stdout)]
     )
-    print("🚂 Auth Service - Railway 환경에서 실행 중 - 포트 8001")
+    print("🚂 Auth Service - Railway 환경에서 실행 중")
 else:
     logging.basicConfig(level=logging.INFO)
     print("🏠 Auth Service - 로컬 환경에서 실행 중")
@@ -78,7 +78,7 @@ async def close_http_client():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 Auth Service 시작 (포트 8001)")
+    logger.info("🚀 Auth Service 시작")
     # HTTP 클라이언트 초기화 (Gateway와 동일)
     await get_http_client()
     # DB 연결 테스트
@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Auth Service",
-    description="Authentication and Authorization Service (포트 8001)",
+    description="Authentication and Authorization Service",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -249,21 +249,21 @@ async def signup(request: Request):
 
 @app.post("/login")
 async def login(request: Request):
-    """로그인 처리"""
+    """로그인 처리 - id와 pass 사용"""
     try:
         start_time = datetime.now()
         print(f"🚂 AUTH SERVICE LOGIN START: {start_time.isoformat()}")
         logger.info(f"AUTH_SERVICE_LOGIN_START: {start_time.isoformat()}")
         
         body = await request.json()
-        user_name = body.get("name", "")
+        user_id = body.get("id", "")
         user_pass = body.get("pass", "")
         
         # 로그인 시도 로그
         login_attempt_log = {
             "event": "login_attempt",
             "timestamp": datetime.now().isoformat(),
-            "user_name": user_name,
+            "user_id": user_id,
             "source": "auth_service",
             "environment": "railway"
         }
@@ -271,11 +271,11 @@ async def login(request: Request):
         logger.info(f"AUTH_SERVICE_LOGIN_ATTEMPT: {json.dumps(login_attempt_log, ensure_ascii=False)}")
         
         # 간단한 로그인 검증 (실제로는 데이터베이스 확인 필요)
-        if user_name and user_pass:
+        if user_id and user_pass:
             success_log = {
                 "event": "login_success",
                 "timestamp": datetime.now().isoformat(),
-                "user_name": user_name,
+                "user_id": user_id,
                 "source": "auth_service",
                 "environment": "railway",
                 "processing_time_ms": (datetime.now() - start_time).total_seconds() * 1000
@@ -286,7 +286,7 @@ async def login(request: Request):
             return {
                 "status": "success",
                 "message": "로그인 성공!",
-                "user": {"name": user_name},
+                "user": {"id": user_id},
                 "service": "auth-service"
             }
         else:
@@ -319,81 +319,5 @@ async def service_status():
         logger.info(f"AUTH_SERVICE_STATUS: {json.dumps(status_data, ensure_ascii=False)}")
     
     return status_data
-
-@app.get("/health")
-async def health_check_railway():
-    """Railway 헬스체크용 엔드포인트 - Railway가 요구하는 /health 경로"""
-    health_data = {
-        "status": "healthy",
-        "service": "auth-service",
-        "timestamp": datetime.now().isoformat(),
-        "port": os.getenv("PORT", "8001"),
-        "environment": "railway" if IS_RAILWAY else "local",
-        "railway_health_check": True,
-        "endpoint": "/health"
-    }
-    
-    if IS_RAILWAY:
-        print(f"🚂 AUTH SERVICE RAILWAY HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
-        logger.info(f"AUTH_SERVICE_RAILWAY_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
-    
-    return health_data
-
-@app.get("/auth/health")
-async def health_check():
-    """기존 헬스체크 엔드포인트 - /auth/health 경로"""
-    health_data = {
-        "status": "healthy",
-        "service": "auth-service",
-        "timestamp": datetime.now().isoformat(),
-        "port": os.getenv("PORT", "8001"),
-        "environment": "railway" if IS_RAILWAY else "local",
-        "railway_health_check": True,
-        "endpoint": "/auth/health"
-    }
-    
-    if IS_RAILWAY:
-        print(f"🚂 AUTH SERVICE HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
-        logger.info(f"AUTH_SERVICE_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
-    
-    return health_data
-
-# 외부 API 호출 테스트 엔드포인트
-@app.get("/test-external")
-async def test_external_api():
-    """외부 API 호출 테스트"""
-    try:
-        client = await get_http_client()
-        
-        # Gateway 서비스 호출 테스트
-        gateway_url = os.getenv("GATEWAY_URL", "https://gateway-production-be21.up.railway.app")
-        response = await client.get(f"{gateway_url}/api/v1/health")
-        
-        test_result = {
-            "status": "success",
-            "gateway_health": response.json(),
-            "timestamp": datetime.now().isoformat(),
-            "service": "auth-service"
-        }
-        
-        if IS_RAILWAY:
-            print(f"🚂 AUTH SERVICE EXTERNAL TEST: {json.dumps(test_result, indent=2, ensure_ascii=False)}")
-            logger.info(f"AUTH_SERVICE_EXTERNAL_TEST: {json.dumps(test_result, indent=2, ensure_ascii=False)}")
-        
-        return test_result
-        
-    except Exception as e:
-        error_result = {
-            "status": "error",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat(),
-            "service": "auth-service"
-        }
-        
-        if IS_RAILWAY:
-            print(f"❌ AUTH SERVICE EXTERNAL TEST ERROR: {json.dumps(error_result, indent=2, ensure_ascii=False)}")
-            logger.error(f"AUTH_SERVICE_EXTERNAL_TEST_ERROR: {json.dumps(error_result, ensure_ascii=False)}")
-        
-        raise HTTPException(status_code=500, detail=f"외부 API 테스트 실패: {str(e)}")
 
 # Docker에서 uvicorn으로 실행되므로 직접 실행 코드 제거 (Gateway와 완전히 동일)

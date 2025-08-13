@@ -24,5 +24,5 @@ EXPOSE ${PORT:-8001}
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
 
-# 간단하고 확실한 실행 명령어
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Railway 환경변수 $PORT를 사용하는 실행 명령어
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
