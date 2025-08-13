@@ -78,24 +78,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
-async def health_check():
-    """헬스 체크 (Gateway와 동일한 패턴)"""
-    health_data = {
-        "status": "healthy", 
-        "service": "auth-service",
-        "timestamp": datetime.now().isoformat(),
-        "environment": "railway" if IS_RAILWAY else "local",
-        "port": 8001
-    }
-    
-    # Railway 로그에 헬스체크 정보 출력 (Gateway와 동일한 패턴)
-    if IS_RAILWAY:
-        print(f"🚂 AUTH SERVICE HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
-        logger.info(f"AUTH_SERVICE_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
-    
-    return health_data
-
 @app.post("/signup")
 async def signup(request: Request):
     """회원가입 처리 - name과 pass만 저장"""
@@ -262,7 +244,6 @@ async def service_status():
         "timestamp": datetime.now().isoformat(),
         "environment": "railway" if IS_RAILWAY else "local",
         "endpoints": [
-            "/health",
             "/signup",
             "/login",
             "/status"
@@ -295,7 +276,7 @@ async def test_external_api():
         
         if IS_RAILWAY:
             print(f"🚂 AUTH SERVICE EXTERNAL TEST: {json.dumps(test_result, indent=2, ensure_ascii=False)}")
-            logger.info(f"AUTH_SERVICE_EXTERNAL_TEST: {json.dumps(test_result, ensure_ascii=False)}")
+            logger.info(f"AUTH_SERVICE_EXTERNAL_TEST: {json.dumps(test_result, indent=2, ensure_ascii=False)}")
         
         return test_result
         
