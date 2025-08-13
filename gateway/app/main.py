@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
 
 # Railway 환경 확인
-IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") == "true" or os.getenv("PORT") is not None
+IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") == "true" or (os.getenv("PORT") is not None and os.getenv("PORT") != "")
 
 # 로깅 설정
 if IS_RAILWAY:

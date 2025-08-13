@@ -28,7 +28,7 @@ if not IS_VERCEL:
         pass
 
 # Railway 환경 확인
-IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") == "true" or os.getenv("PORT") is not None
+IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") == "true" or (os.getenv("PORT") is not None and os.getenv("PORT") != "")
 
 # 로깅 설정 (Railway 환경에 최적화)
 if IS_RAILWAY:
@@ -409,5 +409,12 @@ if __name__ == "__main__":
     import uvicorn
     
     # Railway 환경변수에서 PORT 가져오기, 없으면 8080 사용
-    port = int(os.getenv("PORT", "8080"))
+    # PORT가 None이거나 빈 문자열일 때 기본값 사용
+    port_str = os.getenv("PORT", "8080")
+    try:
+        port = int(port_str) if port_str else 8080
+    except (ValueError, TypeError):
+        port = 8080
+    
+    print(f"🚀 서버 시작 - 포트: {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
