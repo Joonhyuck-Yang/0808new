@@ -26,5 +26,5 @@ ENV RAILWAY_ENVIRONMENT=true
 ENV PORT=8080
 
 # Railway 환경변수 $PORT를 사용하는 실행 명령어 (Railway 최적화)
-# shell 형태로 실행하여 환경변수 치환 보장
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# 환경변수를 직접 사용하여 숫자로 전달
+CMD uvicorn main:app --host 0.0.0.0 --port $PORT
