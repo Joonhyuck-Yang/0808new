@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사 (전체 app 폴더를 복사)
 COPY app/ ./app/
 
-# 포트 노출 (Railway 환경변수 사용)
-EXPOSE ${PORT:-8001}
+# 포트 노출 (고정 포트)
+EXPOSE 8001
 
 # 환경변수 설정
 ENV PYTHONPATH=/app

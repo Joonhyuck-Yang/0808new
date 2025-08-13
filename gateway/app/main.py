@@ -182,7 +182,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Gateway API",
     description="Gateway API for ausikor.com - Auth Service 프록시",
-    version="0.3.0",
+    version="0.4.0",
     docs_url="/docs",
     lifespan=lifespan
 )
@@ -286,7 +286,7 @@ async def main_page():
                     </p>
                 </div>
                 
-                <form id="signupForm" method="POST" action="/signup" class="space-y-8">
+                <form id="signupForm" method="POST" action="/api/v1/signup" class="space-y-8">
                     <button
                         type="submit"
                         class="w-full py-4 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 transition-all duration-300 transform hover:scale-105"
@@ -297,7 +297,7 @@ async def main_page():
                 
                 <div class="mt-8 text-center">
                     <p class="text-gray-600 text-sm">
-                        회원가입 버튼을 누르면 POST 방식으로 /signup 페이지로 이동합니다
+                        회원가입 버튼을 누르면 POST 방식으로 /api/v1/signup 페이지로 이동합니다
                     </p>
                 </div>
             </div>

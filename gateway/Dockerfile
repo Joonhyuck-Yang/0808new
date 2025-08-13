@@ -17,8 +17,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 소스 코드 복사
 COPY . .
 
-# 포트 노출
+# 포트 노출 (고정 포트)
 EXPOSE 8080
 
-# FastAPI 서버 실행 (app/main.py 실행)
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# 환경변수 설정
+ENV PYTHONPATH=/app
+ENV RAILWAY_ENVIRONMENT=true
+
+# FastAPI 서버 실행 (Railway 환경변수 $PORT 사용)
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
