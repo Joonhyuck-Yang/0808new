@@ -19,5 +19,5 @@ COPY . .
 # 포트 노출 (Railway에서 자동으로 설정)
 EXPOSE $PORT
 
-# 애플리케이션 실행 (환경변수 PORT 사용, 기본값 8000)
-CMD ["sh", "-c", "PORT=${PORT:-8000} && echo \"Using port: $PORT\" && uvicorn app.main:app --host 0.0.0.0 --port $PORT"] 
+# 애플리케이션 실행 (Python 직접 실행으로 환경변수 처리)
+CMD ["python", "app/main.py"] 
