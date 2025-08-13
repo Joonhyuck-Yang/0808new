@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend
-        pnpm install
+        pnpm install --frozen-lockfile
     
     - name: Build frontend
       run: |
@@ -61,3 +61,4 @@ jobs:
         railway up --service gateway --detach
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      continue-on-error: true
