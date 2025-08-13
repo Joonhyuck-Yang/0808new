@@ -16,12 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사
 COPY . .
 
-# 포트 8001 노출 (하드코딩으로 포트 충돌 방지)
-EXPOSE 8001
+# 포트 노출 (환경변수로 설정)
+EXPOSE ${PORT:-8001}
 
-# 환경변수 설정 (포트 8001 고정)
-ENV PORT=8001
+# 환경변수 설정
+ENV PORT=${PORT:-8001}
 ENV PYTHONPATH=/app
 
-# uvicorn으로 실행 (포트 8001 고정)
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# uvicorn으로 실행 (환경변수 PORT 사용)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
