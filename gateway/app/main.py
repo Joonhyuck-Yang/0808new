@@ -30,8 +30,22 @@ else:
 
 logger = logging.getLogger("gateway_api")
 
-# Auth Service URL 설정 (포트 8001)
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "https://auth-service-production-aabc.up.railway.app")
+# Auth Service URL 동적 구성 함수
+def get_auth_service_url() -> str:
+    """Auth Service URL을 동적으로 구성"""
+    # 1. 환경변수에서 직접 URL 확인
+    if os.getenv("AUTH_SERVICE_URL"):
+        return os.getenv("AUTH_SERVICE_URL")
+    
+    # 2. Railway 환경에서 서비스 이름으로 구성
+    if os.getenv("RAILWAY_ENVIRONMENT") == "true":
+        return "https://auth-service-production-aabc.up.railway.app"
+    
+    # 3. 로컬 개발 환경
+    return "http://localhost:8001"
+
+# Auth Service URL 설정 (동적 구성)
+AUTH_SERVICE_URL = get_auth_service_url()
 
 # 허용된 도메인 목록
 ALLOWED_DOMAINS = [
@@ -92,6 +106,68 @@ async def call_auth_service(endpoint: str, method: str = "GET", data: dict = Non
         logger.error(f"❌ Auth Service 연결 실패: {str(e)}")
         raise HTTPException(status_code=503, detail="Auth Service 연결 실패")
 
+# Auth Service 연결 실패 시 fallback 응답 함수
+def get_auth_service_fallback_response(operation: str) -> dict:
+    """Auth Service 연결 실패 시 fallback 응답"""
+    return {
+        "status": "service_unavailable",
+        "message": f"{operation} 서비스가 현재 사용할 수 없습니다. 잠시 후 다시 시도해주세요.",
+        "error_code": "AUTH_SERVICE_DOWN",
+        "timestamp": datetime.now().isoformat(),
+        "service": "gateway",
+        "fallback_response": True
+    }
+
+# Auth Service 연결 시도 및 fallback 처리
+async def call_auth_service_with_fallback(endpoint: str, method: str = "GET", data: dict = None, operation: str = "요청") -> dict:
+    """Auth Service 호출 시 fallback 로직 포함"""
+    try:
+        # 현재 Auth Service URL 로깅
+        current_url = get_auth_service_url()
+        logger.info(f"🔗 Auth Service 연결 시도: {current_url}{endpoint}")
+        
+        return await call_auth_service(endpoint, method, data)
+    except HTTPException as e:
+        if e.status_code in [502, 503, 504]:
+            # 서비스 연결 실패 시 fallback 응답
+            fallback_response = get_auth_service_fallback_response(operation)
+            
+            # Gateway 로그에 fallback 정보 출력
+            fallback_log = {
+                "event": "auth_service_fallback",
+                "timestamp": datetime.now().isoformat(),
+                "endpoint": endpoint,
+                "method": method,
+                "error_status": e.status_code,
+                "error_detail": str(e.detail),
+                "fallback_response": fallback_response,
+                "source": "gateway_api",
+                "environment": "railway"
+            }
+            print(f"🚂 GATEWAY FALLBACK LOG: {json.dumps(fallback_log, indent=2, ensure_ascii=False)}")
+            logger.warning(f"GATEWAY_FALLBACK_LOG: {json.dumps(fallback_log, ensure_ascii=False)}")
+            
+            return fallback_response
+        raise e
+    except Exception as e:
+        # 예상치 못한 오류 시에도 fallback 응답
+        fallback_response = get_auth_service_fallback_response(operation)
+        
+        error_log = {
+            "event": "auth_service_unexpected_error",
+            "timestamp": datetime.now().isoformat(),
+            "endpoint": endpoint,
+            "method": method,
+            "error": str(e),
+            "fallback_response": fallback_response,
+            "source": "gateway_api",
+            "environment": "railway"
+        }
+        print(f"🚂 GATEWAY UNEXPECTED ERROR LOG: {json.dumps(error_log, indent=2, ensure_ascii=False)}")
+        logger.error(f"GATEWAY_UNEXPECTED_ERROR_LOG: {json.dumps(error_log, ensure_ascii=False)}")
+        
+        return fallback_response
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Gateway API 서비스 시작")
@@ -133,7 +209,79 @@ gateway_router = APIRouter(prefix="/api/v1", tags=["Gateway API"])
 # 헬스 체크 엔드포인트
 @gateway_router.get("/health", summary="테스트 엔드포인트")
 async def health_check():
-    return {"status": "healthy!", "message": "Gateway API is running", "service": "gateway"}
+    """게이트웨이 헬스체크 - Auth Service 연결 상태도 확인"""
+    try:
+        # Auth Service 연결 상태 확인
+        auth_service_status = "unknown"
+        try:
+            # 빠른 연결 테스트 (타임아웃 5초)
+            client = await get_http_client()
+            response = await client.get(f"{get_auth_service_url()}/auth/health", timeout=5.0)
+            if response.status_code == 200:
+                auth_service_status = "healthy"
+            else:
+                auth_service_status = "unhealthy"
+        except Exception as e:
+            auth_service_status = "unreachable"
+            logger.warning(f"Auth Service 연결 확인 실패: {str(e)}")
+        
+        return {
+            "status": "healthy!", 
+            "message": "Gateway API is running", 
+            "service": "gateway",
+            "timestamp": datetime.now().isoformat(),
+            "auth_service_status": auth_service_status,
+            "auth_service_url": get_auth_service_url(),
+            "environment": "railway" if IS_RAILWAY else "local"
+        }
+    except Exception as e:
+        logger.error(f"헬스체크 오류: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Gateway API health check failed: {str(e)}",
+            "service": "gateway",
+            "timestamp": datetime.now().isoformat()
+        }
+
+# 서비스 상태 모니터링 엔드포인트
+@gateway_router.get("/services/status", summary="연결된 서비스들의 상태 확인")
+async def services_status():
+    """연결된 모든 서비스의 상태를 확인"""
+    services_info = {}
+    
+    # Auth Service 상태 확인
+    try:
+        client = await get_http_client()
+        response = await client.get(f"{get_auth_service_url()}/auth/health", timeout=5.0)
+        if response.status_code == 200:
+            auth_data = response.json()
+            services_info["auth_service"] = {
+                "status": "healthy",
+                "url": get_auth_service_url(),
+                "response": auth_data,
+                "last_check": datetime.now().isoformat()
+            }
+        else:
+            services_info["auth_service"] = {
+                "status": "unhealthy",
+                "url": get_auth_service_url(),
+                "error": f"HTTP {response.status_code}",
+                "last_check": datetime.now().isoformat()
+            }
+    except Exception as e:
+        services_info["auth_service"] = {
+            "status": "unreachable",
+            "url": get_auth_service_url(),
+            "error": str(e),
+            "last_check": datetime.now().isoformat()
+        }
+    
+    return {
+        "gateway_status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "environment": "railway" if IS_RAILWAY else "local",
+        "services": services_info
+    }
 
 # 회원가입 요청을 Auth Service로 전달 (프록시 역할)
 @gateway_router.post("/signup", summary="회원가입 - Auth Service로 전달")
@@ -155,7 +303,7 @@ async def signup_proxy(request: Request):
         logger.info(f"GATEWAY_PROXY_LOG: {json.dumps(gateway_log, ensure_ascii=False)}")
         
         # Auth Service로 요청 전달
-        response_data = await call_auth_service("/signup", "POST", body)
+        response_data = await call_auth_service_with_fallback("/signup", "POST", body, "회원가입")
         
         # Gateway 로그에 응답 정보 출력
         response_log = {
