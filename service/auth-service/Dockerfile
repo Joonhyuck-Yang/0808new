@@ -20,4 +20,4 @@ COPY . .
 EXPOSE $PORT
 
 # 애플리케이션 실행 (환경변수 PORT 사용, 기본값 8000)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"] 
+CMD ["sh", "-c", "PORT=${PORT:-8000} && echo \"Using port: $PORT\" && uvicorn app.main:app --host 0.0.0.0 --port $PORT"] 
