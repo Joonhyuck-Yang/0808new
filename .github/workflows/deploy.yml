@@ -9,9 +9,6 @@ on:
 jobs:
   deploy-vercel:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
     steps:
     - uses: actions/checkout@v4
     
@@ -24,14 +21,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'pnpm'
-        cache-dependency-path: 'frontend/pnpm-lock.yaml'
     
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      run: |
+        cd frontend
+        pnpm install
     
     - name: Build frontend
-      run: pnpm build
+      run: |
+        cd frontend
+        pnpm build
     
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
