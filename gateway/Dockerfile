@@ -23,6 +23,7 @@ EXPOSE 8080
 # 환경변수 설정
 ENV PYTHONPATH=/app
 ENV RAILWAY_ENVIRONMENT=true
+ENV PORT=8080
 
 # FastAPI 서버 실행 (Railway 환경변수 $PORT 사용)
-CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
