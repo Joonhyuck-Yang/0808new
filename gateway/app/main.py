@@ -207,6 +207,18 @@ app.add_middleware(
 # 메인 라우터 생성
 gateway_router = APIRouter(prefix="/api/v1", tags=["Gateway API"])
 
+# Railway 헬스체크 엔드포인트
+@gateway_router.get("/health", summary="헬스체크 - Railway 배포용")
+async def health_check():
+    """Railway 헬스체크용 엔드포인트"""
+    return {
+        "status": "healthy",
+        "service": "gateway",
+        "timestamp": datetime.now().isoformat(),
+        "environment": "railway",
+        "message": "Gateway API is running"
+    }
+
 # 회원가입 요청을 Auth Service로 전달 (프록시 역할)
 @gateway_router.post("/signup", summary="회원가입 - Auth Service로 전달")
 async def signup_proxy(request: Request):
