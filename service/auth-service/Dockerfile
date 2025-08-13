@@ -16,11 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사
 COPY . .
 
-# 포트 노출 (고정 포트 사용)
-EXPOSE 8001
+# 포트 노출 (Railway 환경변수 우선, 없으면 8001 사용)
+EXPOSE ${PORT:-8001}
 
 # 환경변수 설정
 ENV PYTHONPATH=/app
+ENV RAILWAY_ENVIRONMENT=true
 
-# uvicorn으로 실행 (고정 포트 사용)
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# uvicorn으로 실행 (Railway 환경변수 우선, 없으면 8001 사용)
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}"]

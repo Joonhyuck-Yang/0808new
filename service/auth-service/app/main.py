@@ -256,6 +256,24 @@ async def service_status():
     
     return status_data
 
+@app.get("/auth/health")
+async def health_check():
+    """Railway 헬스체크용 엔드포인트 - 배포 성공을 위해 필수!"""
+    health_data = {
+        "status": "healthy",
+        "service": "auth-service",
+        "timestamp": datetime.now().isoformat(),
+        "port": os.getenv("PORT", "8001"),
+        "environment": "railway" if IS_RAILWAY else "local",
+        "railway_health_check": True
+    }
+    
+    if IS_RAILWAY:
+        print(f"🚂 AUTH SERVICE HEALTH CHECK: {json.dumps(health_data, indent=2, ensure_ascii=False)}")
+        logger.info(f"AUTH_SERVICE_HEALTH_CHECK: {json.dumps(health_data, ensure_ascii=False)}")
+    
+    return health_data
+
 # 외부 API 호출 테스트 엔드포인트
 @app.get("/test-external")
 async def test_external_api():
