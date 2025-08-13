@@ -12,16 +12,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'pnpm'
-    
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 8
     
     - name: Install dependencies
       run: |
@@ -57,7 +57,7 @@ jobs:
     
     - name: Deploy to Railway
       run: |
-        echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
+        echo ${{ secrets.RAILWAY_TOKEN }} | railway login
         railway up --service gateway --detach
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
